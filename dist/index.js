@@ -27914,19 +27914,8 @@ function runTestRunner({ slug, path }, { image }) {
         const end = external_node_process_namespaceObject.hrtime.bigint();
         core.debug("Test runner finished");
         const results = yield readJsonFile(external_node_path_namespaceObject.join(path, "results.json"));
-        return Object.assign(Object.assign({}, results), { time: end - start });
+        return Object.assign(Object.assign({}, results), { duration: Number(end - start) / 1.0e6 });
     });
-}
-function formatDuration(nanoseconds) {
-    const s = BigInt(1e9);
-    const ms = BigInt(1e6);
-    if (nanoseconds > s) {
-        return `${nanoseconds / s} seconds`;
-    }
-    if (nanoseconds > ms) {
-        return `${nanoseconds / ms} milliseconds`;
-    }
-    return `${nanoseconds} nanoseconds`;
 }
 function printResult({ name }, result) {
     if (result.status === "error") {
@@ -27954,7 +27943,7 @@ function printResult({ name }, result) {
                 break;
         }
     }
-    core.info(`Duration: ${formatDuration(result.time)}`);
+    core.info(`Duration: ${result.duration.toPrecision(3)} ms`);
 }
 function copyImplementationFiles(exercise) {
     return __awaiter(this, void 0, void 0, function* () {

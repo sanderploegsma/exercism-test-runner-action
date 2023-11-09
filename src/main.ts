@@ -37,7 +37,10 @@ type PracticeExercise = ExerciseConfig & {
 type Exercise = ConceptExercise | PracticeExercise;
 
 type TestResult = TestRunnerResult & {
-  time: bigint;
+  /**
+   * Duration of the test run in milliseconds.
+   */
+  duration: number;
 };
 
 async function readJsonFile<T>(path: string): Promise<T> {
@@ -77,23 +80,8 @@ async function runTestRunner(
   );
   return {
     ...results,
-    time: end - start,
+    duration: Number(end - start) / 1.0e6,
   };
-}
-
-function formatDuration(nanoseconds: bigint): string {
-  const s = BigInt(1e9);
-  const ms = BigInt(1e6);
-
-  if (nanoseconds > s) {
-    return `${nanoseconds / s} seconds`;
-  }
-
-  if (nanoseconds > ms) {
-    return `${nanoseconds / ms} milliseconds`;
-  }
-
-  return `${nanoseconds} nanoseconds`;
 }
 
 function printResult({ name }: Exercise, result: TestResult) {
@@ -123,7 +111,7 @@ function printResult({ name }: Exercise, result: TestResult) {
         break;
     }
   }
-  core.info(`Duration: ${formatDuration(result.time)}`);
+  core.info(`Duration: ${result.duration.toPrecision(3)} ms`);
 }
 
 async function copyImplementationFiles(exercise: Exercise) {
