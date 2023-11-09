@@ -135,7 +135,7 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
   );
 
   const results = await runTestRunner(slug, exercisePath, image);
-  printResults(results);
+  printResults(slug, results);
 }
 
 async function main() {
