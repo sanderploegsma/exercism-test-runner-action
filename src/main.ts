@@ -127,6 +127,7 @@ async function copyImplementationFiles(exercise: Exercise) {
     exercise.metadata.files.solution.map((relativePath) => {
       const filePath = pathLib.join(exercise.path, relativePath);
       const targetFilePath = `${filePath}.bak`;
+      core.debug(`Copying ${filePath} to ${targetFilePath}`);
       return cp(filePath, targetFilePath);
     }),
   );
@@ -148,6 +149,7 @@ async function copyImplementationFiles(exercise: Exercise) {
         targetDir,
         pathLib.basename(filePath),
       );
+      core.debug(`Copying ${filePath} to ${targetFilePath}`);
       return cp(filePath, targetFilePath);
     }),
   );
