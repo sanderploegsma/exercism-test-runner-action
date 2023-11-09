@@ -27636,6 +27636,8 @@ const path = __nccwpck_require__(9411);
 const { spawn } = __nccwpck_require__(7718);
 const chalk = __nccwpck_require__(8818);
 
+const color = new chalk.Instance({ level: 3 });
+
 /**
  * Pull the given Docker image.
  * @param {string} image Docker image to pull
@@ -27712,9 +27714,9 @@ function printResults(slug, results) {
     total++;
     if (test.status === "pass") {
       passed++;
-      core.info(chalk.green(`- ${test.name}`));
+      core.info(color.green(`- ${test.name}`));
     } else {
-      core.info(chalk.red(`- ${test.name}`));
+      core.info(color.red(`- ${test.name}`));
       core.info(test.message);
     }
   }

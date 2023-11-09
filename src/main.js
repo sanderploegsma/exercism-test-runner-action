@@ -6,6 +6,8 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 const chalk = require("chalk");
 
+const color = new chalk.Instance({ level: 3 });
+
 /**
  * Pull the given Docker image.
  * @param {string} image Docker image to pull
@@ -82,9 +84,9 @@ function printResults(slug, results) {
     total++;
     if (test.status === "pass") {
       passed++;
-      core.info(chalk.green(`- ${test.name}`));
+      core.info(color.green(`- ${test.name}`));
     } else {
-      core.info(chalk.red(`- ${test.name}`));
+      core.info(color.red(`- ${test.name}`));
       core.info(test.message);
     }
   }
