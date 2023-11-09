@@ -50,22 +50,23 @@ function printResults(slug, results) {
     return;
   }
 
-  let passed = 0;
-  let total = 0;
   for (const test of results.tests) {
-    total++;
-    if (test.status === "pass") {
-      passed++;
-      core.info(color.green(`- ${test.name}`));
-    } else {
-      core.info(color.red(`- ${test.name}`));
-      core.info(test.message);
+    switch (test.status) {
+      case "pass":
+        core.info(`[${color.green(test.status.toUpperCase())}] ${test.name}`);
+        break;
+      case "fail":
+        core.info(`[${color.yellow(test.status.toUpperCase())}] ${test.name}`);
+        break;
+      case "error":
+        core.info(`[${color.red(test.status.toUpperCase())}] ${test.name}`);
+        break;
     }
   }
 
-  if (passed < total) {
-    core.warning(`${passed}/${total} of tests passed`, {
-      title: `Test results for exercise ${slug}`,
+  for (const test of results.tests.filter((t) => t.status !== "pass")) {
+    core.warning(test.message, {
+      title: `[${slug}] Test failed: ${test.name}`,
     });
   }
 }
@@ -78,6 +79,7 @@ function printResults(slug, results) {
  * @param {string} image
  */
 async function testExercise(slug, exercisePath, implementationKey, image) {
+  core.info(`Testing exercise: ${slug}`);
   const config = JSON.parse(
     await fs.readFile(path.join(exercisePath, ".meta/config.json"), "utf8"),
   );
@@ -119,26 +121,22 @@ async function main() {
     const conceptExercises = await fs.readdir("exercises/concept");
     core.debug(`Found concept exercises: ${conceptExercises}`);
     for (const slug of conceptExercises) {
-      await core.group(`Testing concept exercise: ${slug}`, () =>
-        testExercise(
-          slug,
-          path.resolve("exercises/concept", slug),
-          "exemplar",
-          image,
-        ),
+      await testExercise(
+        slug,
+        path.resolve("exercises/concept", slug),
+        "exemplar",
+        image,
       );
     }
 
     const practiceExercises = await fs.readdir("exercises/practice");
     core.debug(`Found practice exercises: ${practiceExercises}`);
     for (const slug of practiceExercises) {
-      await core.group(`Testing practice exercise: ${slug}`, () =>
-        testExercise(
-          slug,
-          path.resolve("exercises/practice", slug),
-          "example",
-          image,
-        ),
+      await testExercise(
+        slug,
+        path.resolve("exercises/practice", slug),
+        "example",
+        image,
       );
     }
   } catch (err) {
