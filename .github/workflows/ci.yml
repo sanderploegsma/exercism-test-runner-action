@@ -15,6 +15,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: exercism/java
+          ref: 261a3f7fce08ae7083872624767e7a335f3cd515
       - name: Check out current repository
         uses: actions/checkout@v4
         with:
