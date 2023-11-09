@@ -81,9 +81,22 @@ async function runTestRunner(
   };
 }
 
-function printResult({ name }: Exercise, result: TestResult) {
-  core.info(`Took ${result.time} nanoseconds`);
+function formatDuration(nanoseconds: bigint): string {
+  const s = BigInt(1e9);
+  const ms = BigInt(1e6);
 
+  if (nanoseconds > s) {
+    return `${nanoseconds / s} seconds`;
+  }
+
+  if (nanoseconds > ms) {
+    return `${nanoseconds / ms} milliseconds`;
+  }
+
+  return `${nanoseconds} nanoseconds`;
+}
+
+function printResult({ name }: Exercise, result: TestResult) {
   if (result.status === "error") {
     core.error(result.message, {
       title: `[${name}] Error while running tests`,
@@ -110,6 +123,7 @@ function printResult({ name }: Exercise, result: TestResult) {
         break;
     }
   }
+  core.info(`Duration: ${formatDuration(result.time)}`);
 }
 
 async function copyImplementationFiles(exercise: Exercise) {
