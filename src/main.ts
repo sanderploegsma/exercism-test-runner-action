@@ -240,7 +240,10 @@ async function getExercises(): Promise<Exercise[]> {
   const config = await readJsonFile<TrackConfig>("config.json");
   const concept = await getConceptExercises(config);
   const practice = await getPracticeExercises(config);
-  return [...concept, ...practice];
+  return [
+    ...concept.sort((a, b) => a.name.localeCompare(b.name)),
+    ...practice.sort((a, b) => a.name.localeCompare(b.name)),
+  ];
 }
 
 export async function main(options: Options) {
