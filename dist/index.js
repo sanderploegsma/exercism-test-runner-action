@@ -27976,24 +27976,34 @@ function testExercise(exercise, options) {
     return __awaiter(this, void 0, void 0, function* () {
         if (exercise.type === "concept" && !options.concept) {
             core.info(`Skipping concept exercise: ${exercise.name}`);
-            return;
+            return Object.assign(Object.assign({}, exercise), { status: "Skipped" });
         }
         if (exercise.type === "practice" && !options.practice) {
             core.info(`Skipping practice exercise: ${exercise.name}`);
-            return;
+            return Object.assign(Object.assign({}, exercise), { status: "Skipped" });
         }
         if (exercise.status === "wip" && !options.includeWip) {
             core.info(`Skipping work-in-progress exercise: ${exercise.name}`);
-            return;
+            return Object.assign(Object.assign({}, exercise), { status: "Skipped" });
         }
         if (exercise.status === "deprecated" && !options.includeDeprecated) {
             core.info(`Skipping deprecated exercise: ${exercise.name}`);
-            return;
+            return Object.assign(Object.assign({}, exercise), { status: "Skipped" });
         }
         core.info(`Testing exercise: ${exercise.name}`);
         yield copyImplementationFiles(exercise);
         const result = yield runTestRunner(exercise, options);
         printResult(exercise, result);
+        switch (result.status) {
+            case "pass":
+            case "fail":
+                const passed = result.tests.filter((t) => t.status === "pass").length;
+                const total = result.tests.length;
+                const icon = passed == total ? "✅" : "⚠️";
+                return Object.assign(Object.assign({}, exercise), { duration: result.duration, status: `${icon} ${passed}/${total}` });
+            case "error":
+                return Object.assign(Object.assign({}, exercise), { duration: result.duration, status: "❌ Error" });
+        }
     });
 }
 function prepare({ image }) {
@@ -28039,9 +28049,28 @@ function main(options) {
         try {
             yield prepare(options);
             const exercises = yield getExercises();
+            let summaries = [];
             for (const exercise of exercises) {
-                yield testExercise(exercise, options);
+                const summary = yield testExercise(exercise, options);
+                summaries = [...summaries, summary];
             }
+            core.summary.addTable([
+                [
+                    { data: "Exercise", header: true },
+                    { data: "Type", header: true },
+                    { data: "Status", header: true },
+                    { data: "Duration (ms)", header: true },
+                ],
+                ...summaries.map((s) => {
+                    var _a, _b;
+                    return [
+                        s.name,
+                        s.type,
+                        s.status,
+                        (_b = (_a = s.duration) === null || _a === void 0 ? void 0 : _a.toFixed(3)) !== null && _b !== void 0 ? _b : "",
+                    ];
+                }),
+            ]);
         }
         catch (err) {
             if (err instanceof Error) {

@@ -153,31 +153,56 @@ async function copyImplementationFiles(exercise: Exercise) {
   );
 }
 
-async function testExercise(exercise: Exercise, options: Options) {
+interface TestSummary {
+  name: string;
+  type: string;
+  duration?: number;
+  status: string;
+}
+
+async function testExercise(
+  exercise: Exercise,
+  options: Options,
+): Promise<TestSummary> {
   if (exercise.type === "concept" && !options.concept) {
     core.info(`Skipping concept exercise: ${exercise.name}`);
-    return;
+    return { ...exercise, status: "Skipped" };
   }
 
   if (exercise.type === "practice" && !options.practice) {
     core.info(`Skipping practice exercise: ${exercise.name}`);
-    return;
+    return { ...exercise, status: "Skipped" };
   }
 
   if (exercise.status === "wip" && !options.includeWip) {
     core.info(`Skipping work-in-progress exercise: ${exercise.name}`);
-    return;
+    return { ...exercise, status: "Skipped" };
   }
 
   if (exercise.status === "deprecated" && !options.includeDeprecated) {
     core.info(`Skipping deprecated exercise: ${exercise.name}`);
-    return;
+    return { ...exercise, status: "Skipped" };
   }
 
   core.info(`Testing exercise: ${exercise.name}`);
   await copyImplementationFiles(exercise);
   const result = await runTestRunner(exercise, options);
   printResult(exercise, result);
+
+  switch (result.status) {
+    case "pass":
+    case "fail":
+      const passed = result.tests.filter((t) => t.status === "pass").length;
+      const total = result.tests.length;
+      const icon = passed == total ? "✅" : "⚠️";
+      return {
+        ...exercise,
+        duration: result.duration,
+        status: `${icon} ${passed}/${total}`,
+      };
+    case "error":
+      return { ...exercise, duration: result.duration, status: "❌ Error" };
+  }
 }
 
 async function prepare({ image }: Options) {
@@ -240,9 +265,25 @@ export async function main(options: Options) {
   try {
     await prepare(options);
     const exercises = await getExercises();
+    let summaries: TestSummary[] = [];
     for (const exercise of exercises) {
-      await testExercise(exercise, options);
+      const summary = await testExercise(exercise, options);
+      summaries = [...summaries, summary];
     }
+    core.summary.addTable([
+      [
+        { data: "Exercise", header: true },
+        { data: "Type", header: true },
+        { data: "Status", header: true },
+        { data: "Duration (ms)", header: true },
+      ],
+      ...summaries.map((s) => [
+        s.name,
+        s.type,
+        s.status,
+        s.duration?.toFixed(3) ?? "",
+      ]),
+    ]);
   } catch (err) {
     if (err instanceof Error) {
       core.setFailed(err);
