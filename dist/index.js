@@ -27207,6 +27207,8 @@ var io = __nccwpck_require__(7436);
 const promises_namespaceObject = require("node:fs/promises");
 ;// CONCATENATED MODULE: external "node:path"
 const external_node_path_namespaceObject = require("node:path");
+;// CONCATENATED MODULE: external "node:process"
+const external_node_process_namespaceObject = require("node:process");
 ;// CONCATENATED MODULE: ./node_modules/chalk/source/vendor/ansi-styles/index.js
 const ANSI_BACKGROUND_OFFSET = 10;
 
@@ -27432,8 +27434,6 @@ const ansiStyles = assembleStyles();
 
 /* harmony default export */ const ansi_styles = (ansiStyles);
 
-;// CONCATENATED MODULE: external "node:process"
-const external_node_process_namespaceObject = require("node:process");
 ;// CONCATENATED MODULE: external "node:os"
 const external_node_os_namespaceObject = require("node:os");
 ;// CONCATENATED MODULE: external "node:tty"
@@ -27883,23 +27883,27 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 
+
 function readJsonFile(path) {
     return __awaiter(this, void 0, void 0, function* () {
+        core.debug(`Parsing JSON file ${path}`);
         const data = yield (0,promises_namespaceObject.readFile)(path, "utf8");
         return JSON.parse(data);
     });
 }
-function runTestRunner(slug, exercisePath, image) {
+function runTestRunner({ slug, path }, { image }) {
     return __awaiter(this, void 0, void 0, function* () {
+        core.debug("Starting test runner");
+        const start = external_node_process_namespaceObject.hrtime.bigint();
         yield (0,exec.exec)("docker", [
             "run",
             "--rm",
             "--network",
             "none",
             "--mount",
-            `type=bind,src=${exercisePath},dst=/solution`,
+            `type=bind,src=${path},dst=/solution`,
             "--mount",
-            `type=bind,src=${exercisePath},dst=/output`,
+            `type=bind,src=${path},dst=/output`,
             "--tmpfs",
             "/tmp:rw",
             image,
@@ -27907,16 +27911,21 @@ function runTestRunner(slug, exercisePath, image) {
             "/solution",
             "/output",
         ]);
+        const end = external_node_process_namespaceObject.hrtime.bigint();
+        core.debug("Test runner finished");
+        const results = yield readJsonFile(external_node_path_namespaceObject.join(path, "results.json"));
+        return Object.assign(Object.assign({}, results), { time: end - start });
     });
 }
-function printResults({ slug }, results) {
-    if (results.status === "error") {
-        core.error(results.message, {
-            title: `[${slug}] Error while running tests`,
+function printResult({ name }, result) {
+    core.info(`Took ${result.time} nanoseconds`);
+    if (result.status === "error") {
+        core.error(result.message, {
+            title: `[${name}] Error while running tests`,
         });
         return;
     }
-    for (const test of results.tests) {
+    for (const test of result.tests) {
         switch (test.status) {
             case "pass":
                 core.info(`[${source.green(test.status.toUpperCase())}] ${test.name}`);
@@ -27924,13 +27933,13 @@ function printResults({ slug }, results) {
             case "fail":
                 core.info(`[${source.yellow(test.status.toUpperCase())}] ${test.name}`);
                 core.warning(test.message, {
-                    title: `[${slug}] Test failed: ${test.name}`,
+                    title: `[${name}] Test failed: ${test.name}`,
                 });
                 break;
             case "error":
                 core.info(`[${source.red(test.status.toUpperCase())}] ${test.name}`);
                 core.warning(test.message, {
-                    title: `[${slug}] Test errored: ${test.name}`,
+                    title: `[${name}] Test errored: ${test.name}`,
                 });
                 break;
         }
@@ -27938,15 +27947,24 @@ function printResults({ slug }, results) {
 }
 function copyImplementationFiles(exercise) {
     return __awaiter(this, void 0, void 0, function* () {
-        const targetDir = external_node_path_namespaceObject.join(exercise.path, external_node_path_namespaceObject.dirname(exercise.files.stubs[0]));
-        core.debug("Backing up stub files");
-        yield Promise.all(exercise.files.stubs.map((relativePath) => {
+        const targetDir = external_node_path_namespaceObject.join(exercise.path, external_node_path_namespaceObject.dirname(exercise.metadata.files.solution[0]));
+        core.debug("Backing up solution files");
+        yield Promise.all(exercise.metadata.files.solution.map((relativePath) => {
             const filePath = external_node_path_namespaceObject.join(exercise.path, relativePath);
             const targetFilePath = `${filePath}.bak`;
             return (0,io.cp)(filePath, targetFilePath);
         }));
         core.debug("Copying implementation files");
-        yield Promise.all(exercise.files.implementation.map((relativePath) => {
+        let files = [];
+        switch (exercise.type) {
+            case "concept":
+                files = exercise.metadata.files.exemplar;
+                break;
+            case "practice":
+                files = exercise.metadata.files.example;
+                break;
+        }
+        yield Promise.all(files.map((relativePath) => {
             const filePath = external_node_path_namespaceObject.join(exercise.path, relativePath);
             const targetFilePath = external_node_path_namespaceObject.join(targetDir, external_node_path_namespaceObject.basename(filePath));
             return (0,io.cp)(filePath, targetFilePath);
@@ -27955,11 +27973,26 @@ function copyImplementationFiles(exercise) {
 }
 function testExercise(exercise, options) {
     return __awaiter(this, void 0, void 0, function* () {
-        core.info(`Testing exercise: ${exercise.slug}`);
+        if (exercise.type === "concept" && !options.concept) {
+            core.info(`Skipping concept exercise: ${exercise.name}`);
+            return;
+        }
+        if (exercise.type === "practice" && !options.practice) {
+            core.info(`Skipping practice exercise: ${exercise.name}`);
+            return;
+        }
+        if (exercise.status === "wip" && !options.includeWip) {
+            core.info(`Skipping work-in-progress exercise: ${exercise.name}`);
+            return;
+        }
+        if (exercise.status === "deprecated" && !options.includeDeprecated) {
+            core.info(`Skipping deprecated exercise: ${exercise.name}`);
+            return;
+        }
+        core.info(`Testing exercise: ${exercise.name}`);
         yield copyImplementationFiles(exercise);
-        yield runTestRunner(exercise.slug, exercise.path, options.image);
-        const results = yield readJsonFile(external_node_path_namespaceObject.join(exercise.path, "results.json"));
-        printResults(exercise, results);
+        const result = yield runTestRunner(exercise, options);
+        printResult(exercise, result);
     });
 }
 function prepare({ image }) {
@@ -27967,50 +28000,44 @@ function prepare({ image }) {
         yield (0,exec.exec)("docker", ["pull", image]);
     });
 }
-function testConceptExercises(options) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const directory = "exercises/concept";
-        const exercises = yield (0,promises_namespaceObject.readdir)(directory);
-        core.debug(`Found concept exercises: ${exercises}`);
-        for (const slug of exercises) {
-            const path = external_node_path_namespaceObject.resolve(directory, slug);
-            const metadata = yield readJsonFile(external_node_path_namespaceObject.join(path, ".meta/config.json"));
-            yield testExercise({
-                slug,
-                path,
-                files: {
-                    stubs: metadata.files.solution,
-                    implementation: metadata.files.exemplar,
-                },
-            }, options);
-        }
-    });
-}
-function testPracticeExercises(options) {
+function getPracticeExercises(config) {
     return __awaiter(this, void 0, void 0, function* () {
         const directory = "exercises/practice";
-        const exercises = yield (0,promises_namespaceObject.readdir)(directory);
-        core.debug(`Found practice exercises: ${exercises}`);
-        for (const slug of exercises) {
-            const path = external_node_path_namespaceObject.resolve(directory, slug);
+        return Promise.all(config.exercises.practice.map((exercise) => __awaiter(this, void 0, void 0, function* () {
+            const path = external_node_path_namespaceObject.resolve(directory, exercise.slug);
             const metadata = yield readJsonFile(external_node_path_namespaceObject.join(path, ".meta/config.json"));
-            yield testExercise({
-                slug,
-                path,
-                files: {
-                    stubs: metadata.files.solution,
-                    implementation: metadata.files.example,
-                },
-            }, options);
-        }
+            return Object.assign({ type: "practice", path,
+                metadata }, exercise);
+        })));
+    });
+}
+function getConceptExercises(config) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const directory = "exercises/concept";
+        return Promise.all(config.exercises.concept.map((exercise) => __awaiter(this, void 0, void 0, function* () {
+            const path = external_node_path_namespaceObject.resolve(directory, exercise.slug);
+            const metadata = yield readJsonFile(external_node_path_namespaceObject.join(path, ".meta/config.json"));
+            return Object.assign({ type: "concept", path,
+                metadata }, exercise);
+        })));
+    });
+}
+function getExercises() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const config = yield readJsonFile("config.json");
+        const concept = yield getConceptExercises(config);
+        const practice = yield getPracticeExercises(config);
+        return [...concept, ...practice];
     });
 }
 function main(options) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             yield prepare(options);
-            yield testConceptExercises(options);
-            yield testPracticeExercises(options);
+            const exercises = yield getExercises();
+            for (const exercise of exercises) {
+                yield testExercise(exercise, options);
+            }
         }
         catch (err) {
             if (err instanceof Error) {
@@ -28029,8 +28056,15 @@ function main(options) {
  */
 
 
-const src_image = (0,core.getInput)("test-runner-image", { required: true });
-main({ image: src_image });
+main({
+    image: (0,core.getInput)("test-runner-image", { required: true }),
+    concept: (0,core.getBooleanInput)("test-concept-exercises", { required: true }),
+    practice: (0,core.getBooleanInput)("test-practice-exercises", { required: true }),
+    includeWip: (0,core.getBooleanInput)("include-wip-exercises", { required: true }),
+    includeDeprecated: (0,core.getBooleanInput)("include-deprecated-exercises", {
+        required: true,
+    }),
+});
 
 })();
 

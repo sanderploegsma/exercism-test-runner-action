@@ -1,11 +1,11 @@
-interface ExerciseConfig {
+export interface ExerciseConfig {
   uuid: string;
   slug: string;
   name: string;
   status?: "wip" | "beta" | "active" | "deprecated";
 }
 
-export interface TrackConfiguration {
+export interface TrackConfig {
   exercises: {
     concept: ExerciseConfig[];
     practice: ExerciseConfig[];
@@ -51,16 +51,16 @@ interface PassedTestResult {
   status: "pass";
 }
 
-interface TestExecutionResultPassedOrFailed {
+interface TestRunnerPassedOrFailedResult {
   status: "pass" | "fail";
   tests: Array<TestResult & (FailedTestResult | PassedTestResult)>;
 }
 
-interface TestExecutionError {
+interface TestRunnerErrorResult {
   status: "error";
   message: string;
 }
 
-export type TestExecutionResult =
-  | TestExecutionResultPassedOrFailed
-  | TestExecutionError;
+export type TestRunnerResult =
+  | TestRunnerPassedOrFailedResult
+  | TestRunnerErrorResult;

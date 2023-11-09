@@ -8,6 +8,22 @@ This action tests an Exercism track repository using that track's test runner.
 
 **Required** The Docker image of the test runner.
 
+### `test-concept-exercises`
+
+**Required** Whether to test concept exercises. Defaults to `true`.
+
+### `test-practice-exercises`
+
+**Required** Whether to test practice exercises. Defaults to `true`.
+
+### `include-wip-exercises`
+
+**Required** Whether to test exercises marked as work-in-progress. Defaults to `false`.
+
+### `include-deprecated-exercises`
+
+**Required** Whether to test exercises marked as deprecated. Defaults to `false`.
+
 ## Outputs
 
 None.

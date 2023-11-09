@@ -4,6 +4,22 @@ inputs:
   test-runner-image:
     description: Docker image of the test runner.
     required: true
+  test-concept-exercises:
+    description: Whether to test concept exercises.
+    required: true
+    default: "true"
+  test-practice-exercises:
+    description: Whether to test practice exercises.
+    required: true
+    default: "true"
+  include-wip-exercises:
+    description: Whether to test exercises marked as work-in-progress.
+    required: true
+    default: "false"
+  include-deprecated-exercises:
+    description: Whether to test exercises marked as deprecated.
+    required: true
+    default: "false"
 runs:
   using: node20
   main: dist/index.js
