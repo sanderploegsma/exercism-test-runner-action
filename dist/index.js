@@ -25686,7 +25686,6 @@ const { spawn } = __nccwpck_require__(7718);
  * @returns {Promise<void>}
  */
 async function pullImage(image) {
-  core.info(`Pulling image: ${image}`);
   return new Promise((resolve, reject) => {
     const proc = spawn("docker", ["pull", image]);
 
@@ -25754,7 +25753,8 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
   const config = JSON.parse(
     await fs.readFile(path.join(exercisePath, ".meta/config.json"), "utf8"),
   );
-  core.debug("Backing up solution files");
+
+  core.info("Backing up solution files");
   await Promise.all(
     config.files.solution.map((/** @type {String} */ relativePath) => {
       const filePath = path.join(exercisePath, relativePath);
@@ -25764,7 +25764,7 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
     }),
   );
 
-  core.debug("Copying implementation files");
+  core.info("Copying implementation files");
   const targetDir = path.join(
     exercisePath,
     path.dirname(config.files.solution[0]),
@@ -25785,41 +25785,41 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
   if (results.status !== "pass") {
     core.warning(`Tests failed for exercise ${slug}`);
     core.setFailed("One or more exercises didn't pass the tests");
+  } else {
+    core.info(`All tests passed!`);
   }
 }
 
 async function main() {
   try {
     const image = core.getInput("test-runner-image", { required: true });
-    await pullImage(image);
+    await core.group(`Pulling Docker image ${image}`, () => pullImage(image));
 
-    core.startGroup("Testing concept exercises");
     const conceptExercises = await fs.readdir("exercises/concept");
     core.debug(`Found concept exercises: ${conceptExercises}`);
     for (const slug of conceptExercises) {
-      core.info(`Testing concept exercise ${slug}`);
-      await testExercise(
-        slug,
-        path.resolve("exercises/concept", slug),
-        "exemplar",
-        image,
+      await core.group(`Testing concept exercise: ${slug}`, () =>
+        testExercise(
+          slug,
+          path.resolve("exercises/concept", slug),
+          "exemplar",
+          image,
+        ),
       );
     }
-    core.endGroup();
 
-    core.startGroup("Testing practice exercises");
     const practiceExercises = await fs.readdir("exercises/practice");
     core.debug(`Found practice exercises: ${practiceExercises}`);
     for (const slug of practiceExercises) {
-      core.info(`Testing practice exercise ${slug}`);
-      await testExercise(
-        slug,
-        path.resolve("exercises/practice", slug),
-        "example",
-        image,
+      await core.group(`Testing practice exercise: ${slug}`, () =>
+        testExercise(
+          slug,
+          path.resolve("exercises/practice", slug),
+          "example",
+          image,
+        ),
       );
     }
-    core.endGroup();
   } catch (err) {
     core.setFailed(err);
   }
