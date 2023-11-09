@@ -1,0 +1,9 @@
+name: Exercism Test Runner
+description: Test an Exercism track using its test runner
+inputs:
+  test-runner-image:
+    description: Docker image of the test runner.
+    required: true
+runs:
+  using: node20
+  main: dist/index.js

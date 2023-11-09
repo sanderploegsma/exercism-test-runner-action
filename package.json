@@ -1,0 +1,54 @@
+{
+  "name": "exercism-test-runner-action",
+  "version": "1.0.0",
+  "description": "GitHub Action that tests an Exercism track repository using the track's test runner",
+  "author": "Sander Ploegsma",
+  "license": "MIT",
+  "private": true,
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "format:check": "prettier . --check",
+    "format:write": "prettier . --write",
+    "lint": "eslint .",
+    "package": "ncc build src/index.js --license licenses.txt"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.1",
+    "eslint": "^8.53.0",
+    "prettier": "^3.0.3"
+  },
+  "prettier": {},
+  "eslintConfig": {
+    "env": {
+      "browser": true,
+      "commonjs": true,
+      "es2021": true
+    },
+    "extends": "eslint:recommended",
+    "overrides": [
+      {
+        "env": {
+          "node": true
+        },
+        "files": [
+          ".eslintrc.{js,cjs}"
+        ],
+        "parserOptions": {
+          "sourceType": "script"
+        }
+      }
+    ],
+    "parserOptions": {
+      "ecmaVersion": "latest"
+    },
+    "rules": {}
+  }
+}
