@@ -1,0 +1,25 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test-java:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out exercism/java
+        uses: actions/checkout@v4
+        with:
+          repository: exercism/java
+      - name: Check out current repository
+        uses: actions/checkout@v4
+        with:
+          path: .github/actions/test-runner
+      - name: Run Action
+        uses: ./.github/actions/test-runner
+        with:
+          test-runner-image: exercism/java-test-runner
