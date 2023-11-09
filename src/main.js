@@ -4,6 +4,7 @@ const core = require("@actions/core");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
+const chalk = require("chalk");
 
 /**
  * Pull the given Docker image.
@@ -67,6 +68,34 @@ async function runTestRunner(slug, exercisePath, image) {
   return JSON.parse(results);
 }
 
+function printResults(slug, results) {
+  if (results.status === "error") {
+    core.error(results.message, {
+      title: `Failed to run tests for exercise ${slug}`,
+    });
+    return;
+  }
+
+  let passed = 0;
+  let total = 0;
+  for (const test of results.tests) {
+    total++;
+    if (test.status === "pass") {
+      passed++;
+      core.info(chalk.green(`- ${test.name}`));
+    } else {
+      core.info(chalk.red(`- ${test.name}`));
+      core.info(test.message);
+    }
+  }
+
+  if (passed < total) {
+    core.warning(`${passed}/${total} of tests passed`, {
+      title: `Test results for exercise ${slug}`,
+    });
+  }
+}
+
 /**
  *
  * @param {string} slug Slug for the exercise
@@ -79,7 +108,7 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
     await fs.readFile(path.join(exercisePath, ".meta/config.json"), "utf8"),
   );
 
-  core.info("Backing up solution files");
+  core.debug("Backing up solution files");
   await Promise.all(
     config.files.solution.map((/** @type {String} */ relativePath) => {
       const filePath = path.join(exercisePath, relativePath);
@@ -89,7 +118,7 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
     }),
   );
 
-  core.info("Copying implementation files");
+  core.debug("Copying implementation files");
   const targetDir = path.join(
     exercisePath,
     path.dirname(config.files.solution[0]),
@@ -106,13 +135,7 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
   );
 
   const results = await runTestRunner(slug, exercisePath, image);
-
-  if (results.status !== "pass") {
-    core.warning(`Tests failed for exercise ${slug}`);
-    core.setFailed("One or more exercises didn't pass the tests");
-  } else {
-    core.info(`All tests passed!`);
-  }
+  printResults(results);
 }
 
 async function main() {
