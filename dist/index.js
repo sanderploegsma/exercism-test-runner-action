@@ -28070,7 +28070,8 @@ function main(options) {
                         (_b = (_a = s.duration) === null || _a === void 0 ? void 0 : _a.toFixed(3)) !== null && _b !== void 0 ? _b : "",
                     ];
                 }),
-            ]);
+            ])
+                .write();
         }
         catch (err) {
             if (err instanceof Error) {

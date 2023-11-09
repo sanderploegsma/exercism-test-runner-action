@@ -270,20 +270,22 @@ export async function main(options: Options) {
       const summary = await testExercise(exercise, options);
       summaries = [...summaries, summary];
     }
-    core.summary.addTable([
-      [
-        { data: "Exercise", header: true },
-        { data: "Type", header: true },
-        { data: "Status", header: true },
-        { data: "Duration (ms)", header: true },
-      ],
-      ...summaries.map((s) => [
-        s.name,
-        s.type,
-        s.status,
-        s.duration?.toFixed(3) ?? "",
-      ]),
-    ]);
+    core.summary
+      .addTable([
+        [
+          { data: "Exercise", header: true },
+          { data: "Type", header: true },
+          { data: "Status", header: true },
+          { data: "Duration (ms)", header: true },
+        ],
+        ...summaries.map((s) => [
+          s.name,
+          s.type,
+          s.status,
+          s.duration?.toFixed(3) ?? "",
+        ]),
+      ])
+      .write();
   } catch (err) {
     if (err instanceof Error) {
       core.setFailed(err);
