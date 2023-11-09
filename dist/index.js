@@ -27865,7 +27865,7 @@ const chalkStderr = createChalk({level: stderrColor ? stderrColor.level : 0});
 
 
 
-/* harmony default export */ const source = (chalk);
+/* harmony default export */ const source = ((/* unused pure expression or super */ null && (chalk)));
 
 ;// CONCATENATED MODULE: ./src/main.ts
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
@@ -27884,6 +27884,7 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 
+const main_chalk = new Chalk({ level: 3 });
 function readJsonFile(path) {
     return __awaiter(this, void 0, void 0, function* () {
         core.debug(`Reading JSON file ${path}`);
@@ -27927,16 +27928,16 @@ function printResult({ name }, result) {
     for (const test of result.tests) {
         switch (test.status) {
             case "pass":
-                core.info(`[${source.green(test.status.toUpperCase())}] ${test.name}`);
+                core.info(`[${main_chalk.green(test.status.toUpperCase())}] ${test.name}`);
                 break;
             case "fail":
-                core.info(`[${source.yellow(test.status.toUpperCase())}] ${test.name}`);
+                core.info(`[${main_chalk.yellow(test.status.toUpperCase())}] ${test.name}`);
                 core.warning(test.message, {
                     title: `[${name}] Test failed: ${test.name}`,
                 });
                 break;
             case "error":
-                core.info(`[${source.red(test.status.toUpperCase())}] ${test.name}`);
+                core.info(`[${main_chalk.red(test.status.toUpperCase())}] ${test.name}`);
                 core.warning(test.message, {
                     title: `[${name}] Test errored: ${test.name}`,
                 });

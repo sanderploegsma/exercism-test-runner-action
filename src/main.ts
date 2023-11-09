@@ -4,7 +4,9 @@ import { cp } from "@actions/io";
 import { readFile } from "node:fs/promises";
 import * as pathLib from "node:path";
 import { hrtime } from "node:process";
-import chalk from "chalk";
+import { Chalk } from "chalk";
+
+const chalk = new Chalk({ level: 3 });
 
 import {
   TrackConfig,
