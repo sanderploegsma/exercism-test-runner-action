@@ -6,6 +6,25 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 
 /**
+ * Pull the given Docker image.
+ * @param {string} image Docker image to pull
+ * @returns {Promise<void>}
+ */
+async function pullImage(image) {
+  core.info(`Pulling image: ${image}`);
+  return new Promise((resolve, reject) => {
+    const proc = spawn("docker", ["pull", image]);
+
+    proc.stdout.on("data", (data) => core.debug(`stdout: ${data}`));
+    proc.stderr.on("data", (data) => core.debug(`stderr: ${data}`));
+
+    proc.on("exit", (code) =>
+      code && code > 0 ? reject(`Process exited with code ${code}`) : resolve(),
+    );
+  });
+}
+
+/**
  * Run the test runner on the given exercise.
  * @param {string} slug Slug for the exercise
  * @param {string} exercisePath Path to the exercise
@@ -18,15 +37,22 @@ async function runTestRunner(slug, exercisePath, image) {
     const proc = spawn("docker", [
       "run",
       "--rm",
-      "--network none",
-      `--mount type=bind,src=${exercisePath},dst=/solution`,
-      `--mount type=bind,src=${exercisePath},dst=/output`,
-      "--tmpfs /tmp:rw",
+      "--network",
+      "none",
+      "--mount",
+      `type=bind,src=${exercisePath},dst=/solution`,
+      "--mount",
+      `type=bind,src=${exercisePath},dst=/output`,
+      "--tmpfs",
+      "/tmp:rw",
       image,
       slug,
       "/solution",
       "/output",
     ]);
+
+    proc.stdout.on("data", (data) => core.debug(`stdout: ${data}`));
+    proc.stderr.on("data", (data) => core.debug(`stderr: ${data}`));
 
     proc.on("exit", (code) =>
       code && code > 0
@@ -55,7 +81,7 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
   );
   core.debug("Backing up solution files");
   await Promise.all(
-    config.solution.map((/** @type {String} */ relativePath) => {
+    config.files.solution.map((/** @type {String} */ relativePath) => {
       const filePath = path.join(exercisePath, relativePath);
       const targetFilePath = `${filePath}.bak`;
       core.debug(`Copying ${filePath} to ${targetFilePath}`);
@@ -64,14 +90,19 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
   );
 
   core.debug("Copying implementation files");
-  const targetDir = path.join(exercisePath, path.dirname(config.solution[0]));
+  const targetDir = path.join(
+    exercisePath,
+    path.dirname(config.files.solution[0]),
+  );
   await Promise.all(
-    config[implementationKey].map((/** @type {String} */ relativePath) => {
-      const filePath = path.join(exercisePath, relativePath);
-      const targetFilePath = path.join(targetDir, path.basename(filePath));
-      core.debug(`Copying ${filePath} to ${targetFilePath}`);
-      return fs.copyFile(filePath, targetFilePath);
-    }),
+    config.files[implementationKey].map(
+      (/** @type {String} */ relativePath) => {
+        const filePath = path.join(exercisePath, relativePath);
+        const targetFilePath = path.join(targetDir, path.basename(filePath));
+        core.debug(`Copying ${filePath} to ${targetFilePath}`);
+        return fs.copyFile(filePath, targetFilePath);
+      },
+    ),
   );
 
   const results = await runTestRunner(slug, exercisePath, image);
@@ -85,32 +116,35 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
 async function main() {
   try {
     const image = core.getInput("test-runner-image", { required: true });
+    await pullImage(image);
 
-    core.info("Testing concept exercises");
+    core.startGroup("Testing concept exercises");
     const conceptExercises = await fs.readdir("exercises/concept");
     core.debug(`Found concept exercises: ${conceptExercises}`);
     for (const slug of conceptExercises) {
       core.info(`Testing concept exercise ${slug}`);
       await testExercise(
         slug,
-        path.join("exercises/concept", slug),
+        path.resolve("exercises/concept", slug),
         "exemplar",
         image,
       );
     }
+    core.endGroup();
 
-    core.info("Testing practice exercises");
+    core.startGroup("Testing practice exercises");
     const practiceExercises = await fs.readdir("exercises/practice");
     core.debug(`Found practice exercises: ${practiceExercises}`);
     for (const slug of practiceExercises) {
       core.info(`Testing practice exercise ${slug}`);
       await testExercise(
         slug,
-        path.join("exercises/practice", slug),
+        path.resolve("exercises/practice", slug),
         "example",
         image,
       );
     }
+    core.endGroup();
   } catch (err) {
     core.setFailed(err);
   }
