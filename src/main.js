@@ -1,30 +1,13 @@
 // @ts-check
 
 const core = require("@actions/core");
+const exec = require("@actions/exec");
+const io = require("@actions/io");
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const { spawn } = require("node:child_process");
 const chalk = require("chalk");
 
 const color = new chalk.Instance({ level: 3 });
-
-/**
- * Pull the given Docker image.
- * @param {string} image Docker image to pull
- * @returns {Promise<void>}
- */
-async function pullImage(image) {
-  return new Promise((resolve, reject) => {
-    const proc = spawn("docker", ["pull", image]);
-
-    proc.stdout.on("data", (data) => core.debug(`stdout: ${data}`));
-    proc.stderr.on("data", (data) => core.debug(`stderr: ${data}`));
-
-    proc.on("exit", (code) =>
-      code && code > 0 ? reject(`Process exited with code ${code}`) : resolve(),
-    );
-  });
-}
 
 /**
  * Run the test runner on the given exercise.
@@ -35,33 +18,22 @@ async function pullImage(image) {
  */
 async function runTestRunner(slug, exercisePath, image) {
   core.debug(`Running ${image} on ${slug} at ${exercisePath}`);
-  await new Promise((resolve, reject) => {
-    const proc = spawn("docker", [
-      "run",
-      "--rm",
-      "--network",
-      "none",
-      "--mount",
-      `type=bind,src=${exercisePath},dst=/solution`,
-      "--mount",
-      `type=bind,src=${exercisePath},dst=/output`,
-      "--tmpfs",
-      "/tmp:rw",
-      image,
-      slug,
-      "/solution",
-      "/output",
-    ]);
-
-    proc.stdout.on("data", (data) => core.debug(`stdout: ${data}`));
-    proc.stderr.on("data", (data) => core.debug(`stderr: ${data}`));
-
-    proc.on("exit", (code) =>
-      code && code > 0
-        ? reject(`Process exited with code ${code}`)
-        : resolve(null),
-    );
-  });
+  await exec.exec("docker", [
+    "run",
+    "--rm",
+    "--network",
+    "none",
+    "--mount",
+    `type=bind,src=${exercisePath},dst=/solution`,
+    "--mount",
+    `type=bind,src=${exercisePath},dst=/output`,
+    "--tmpfs",
+    "/tmp:rw",
+    image,
+    slug,
+    "/solution",
+    "/output",
+  ]);
 
   const results = await fs.readFile(
     path.join(exercisePath, "results.json"),
@@ -115,8 +87,7 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
     config.files.solution.map((/** @type {String} */ relativePath) => {
       const filePath = path.join(exercisePath, relativePath);
       const targetFilePath = `${filePath}.bak`;
-      core.debug(`Copying ${filePath} to ${targetFilePath}`);
-      return fs.copyFile(filePath, targetFilePath);
+      return io.cp(filePath, targetFilePath);
     }),
   );
 
@@ -130,8 +101,7 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
       (/** @type {String} */ relativePath) => {
         const filePath = path.join(exercisePath, relativePath);
         const targetFilePath = path.join(targetDir, path.basename(filePath));
-        core.debug(`Copying ${filePath} to ${targetFilePath}`);
-        return fs.copyFile(filePath, targetFilePath);
+        return io.cp(filePath, targetFilePath);
       },
     ),
   );
@@ -143,7 +113,8 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
 async function main() {
   try {
     const image = core.getInput("test-runner-image", { required: true });
-    await core.group(`Pulling Docker image ${image}`, () => pullImage(image));
+    core.info(`Pulling Docker image ${image}`);
+    await exec.exec("docker", ["pull", image]);
 
     const conceptExercises = await fs.readdir("exercises/concept");
     core.debug(`Found concept exercises: ${conceptExercises}`);
