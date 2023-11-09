@@ -1,19 +1,42 @@
 import * as core from "@actions/core";
 import { exec } from "@actions/exec";
 import { cp } from "@actions/io";
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import { readdir, readFile } from "node:fs/promises";
+import * as pathLib from "node:path";
 import chalk from "chalk";
 
-/**
- * Run the test runner on the given exercise.
- * @param {string} slug Slug for the exercise
- * @param {string} exercisePath Path to the exercise
- * @param {string} image Docker image for the test runner
- * @returns {Promise<object>} The test results provided by the test runner
- */
-async function runTestRunner(slug, exercisePath, image) {
-  core.debug(`Running ${image} on ${slug} at ${exercisePath}`);
+import {
+  TrackConfiguration,
+  ConceptExerciseMetadata,
+  PracticeExerciseMetadata,
+  TestExecutionResult,
+} from "./types";
+
+export interface Options {
+  image: string;
+}
+
+interface ExerciseFiles {
+  stubs: string[];
+  implementation: string[];
+}
+
+interface Exercise {
+  slug: string;
+  path: string;
+  files: ExerciseFiles;
+}
+
+async function readJsonFile<T>(path: string): Promise<T> {
+  const data = await readFile(path, "utf8");
+  return JSON.parse(data);
+}
+
+async function runTestRunner(
+  slug: string,
+  exercisePath: string,
+  image: string,
+) {
   await exec("docker", [
     "run",
     "--rm",
@@ -30,15 +53,9 @@ async function runTestRunner(slug, exercisePath, image) {
     "/solution",
     "/output",
   ]);
-
-  const results = await fs.readFile(
-    path.join(exercisePath, "results.json"),
-    "utf8",
-  );
-  return JSON.parse(results);
 }
 
-function printResults(slug, results) {
+function printResults({ slug }: Exercise, results: TestExecutionResult) {
   if (results.status === "error") {
     core.error(results.message, {
       title: `[${slug}] Error while running tests`,
@@ -53,89 +70,121 @@ function printResults(slug, results) {
         break;
       case "fail":
         core.info(`[${chalk.yellow(test.status.toUpperCase())}] ${test.name}`);
+        core.warning(test.message, {
+          title: `[${slug}] Test failed: ${test.name}`,
+        });
         break;
       case "error":
         core.info(`[${chalk.red(test.status.toUpperCase())}] ${test.name}`);
+        core.warning(test.message, {
+          title: `[${slug}] Test errored: ${test.name}`,
+        });
         break;
     }
   }
-
-  for (const test of results.tests.filter((t) => t.status !== "pass")) {
-    core.warning(test.message, {
-      title: `[${slug}] Test failed: ${test.name}`,
-    });
-  }
 }
 
-/**
- *
- * @param {string} slug Slug for the exercise
- * @param {string} exercisePath Path to the exercise
- * @param {string} implementationKey
- * @param {string} image
- */
-async function testExercise(slug, exercisePath, implementationKey, image) {
-  core.info(`Testing exercise: ${slug}`);
-  const config = JSON.parse(
-    await fs.readFile(path.join(exercisePath, ".meta/config.json"), "utf8"),
+async function copyImplementationFiles(exercise: Exercise) {
+  const targetDir = pathLib.join(
+    exercise.path,
+    pathLib.dirname(exercise.files.stubs[0]),
   );
 
-  core.debug("Backing up solution files");
+  core.debug("Backing up stub files");
   await Promise.all(
-    config.files.solution.map((/** @type {String} */ relativePath) => {
-      const filePath = path.join(exercisePath, relativePath);
+    exercise.files.stubs.map((relativePath) => {
+      const filePath = pathLib.join(exercise.path, relativePath);
       const targetFilePath = `${filePath}.bak`;
       return cp(filePath, targetFilePath);
     }),
   );
 
   core.debug("Copying implementation files");
-  const targetDir = path.join(
-    exercisePath,
-    path.dirname(config.files.solution[0]),
-  );
   await Promise.all(
-    config.files[implementationKey].map(
-      (/** @type {String} */ relativePath) => {
-        const filePath = path.join(exercisePath, relativePath);
-        const targetFilePath = path.join(targetDir, path.basename(filePath));
-        return cp(filePath, targetFilePath);
-      },
-    ),
+    exercise.files.implementation.map((relativePath) => {
+      const filePath = pathLib.join(exercise.path, relativePath);
+      const targetFilePath = pathLib.join(
+        targetDir,
+        pathLib.basename(filePath),
+      );
+      return cp(filePath, targetFilePath);
+    }),
   );
-
-  const results = await runTestRunner(slug, exercisePath, image);
-  printResults(slug, results);
 }
 
-export async function main() {
+async function testExercise(exercise: Exercise, options: Options) {
+  core.info(`Testing exercise: ${exercise.slug}`);
+  await copyImplementationFiles(exercise);
+  await runTestRunner(exercise.slug, exercise.path, options.image);
+
+  const results = await readJsonFile<TestExecutionResult>(
+    pathLib.join(exercise.path, "results.json"),
+  );
+  printResults(exercise, results);
+}
+
+async function prepare({ image }: Options) {
+  await exec("docker", ["pull", image]);
+}
+
+async function testConceptExercises(options: Options) {
+  const directory = "exercises/concept";
+  const exercises = await readdir(directory);
+  core.debug(`Found concept exercises: ${exercises}`);
+
+  for (const slug of exercises) {
+    const path = pathLib.resolve(directory, slug);
+    const metadata = await readJsonFile<ConceptExerciseMetadata>(
+      pathLib.join(path, ".meta/config.json"),
+    );
+    await testExercise(
+      {
+        slug,
+        path,
+        files: {
+          stubs: metadata.files.solution,
+          implementation: metadata.files.exemplar,
+        },
+      },
+      options,
+    );
+  }
+}
+
+async function testPracticeExercises(options: Options) {
+  const directory = "exercises/practice";
+  const exercises = await readdir(directory);
+  core.debug(`Found practice exercises: ${exercises}`);
+
+  for (const slug of exercises) {
+    const path = pathLib.resolve(directory, slug);
+    const metadata = await readJsonFile<PracticeExerciseMetadata>(
+      pathLib.join(path, ".meta/config.json"),
+    );
+    await testExercise(
+      {
+        slug,
+        path,
+        files: {
+          stubs: metadata.files.solution,
+          implementation: metadata.files.example,
+        },
+      },
+      options,
+    );
+  }
+}
+
+export async function main(options: Options) {
   try {
-    const image = core.getInput("test-runner-image", { required: true });
-    core.info(`Pulling Docker image ${image}`);
-    await exec("docker", ["pull", image]);
-
-    const conceptExercises = await fs.readdir("exercises/concept");
-    core.debug(`Found concept exercises: ${conceptExercises}`);
-    for (const slug of conceptExercises) {
-      await testExercise(
-        slug,
-        path.resolve("exercises/concept", slug),
-        "exemplar",
-        image,
-      );
-    }
-
-    const practiceExercises = await fs.readdir("exercises/practice");
-    core.debug(`Found practice exercises: ${practiceExercises}`);
-    for (const slug of practiceExercises) {
-      await testExercise(
-        slug,
-        path.resolve("exercises/practice", slug),
-        "example",
-        image,
-      );
-    }
+    await prepare(options);
+    await testConceptExercises(options);
+    await testPracticeExercises(options);
   } catch (err) {
-    core.setFailed(err);
+    if (err instanceof Error) {
+      core.setFailed(err);
+    } else {
+      core.setFailed(`An error occurred: ${err}`);
+    }
   }
 }
