@@ -27886,7 +27886,7 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 function readJsonFile(path) {
     return __awaiter(this, void 0, void 0, function* () {
-        core.debug(`Parsing JSON file ${path}`);
+        core.debug(`Reading JSON file ${path}`);
         const data = yield (0,promises_namespaceObject.readFile)(path, "utf8");
         return JSON.parse(data);
     });
@@ -27917,8 +27917,18 @@ function runTestRunner({ slug, path }, { image }) {
         return Object.assign(Object.assign({}, results), { time: end - start });
     });
 }
+function formatDuration(nanoseconds) {
+    const s = BigInt(1e9);
+    const ms = BigInt(1e6);
+    if (nanoseconds > s) {
+        return `${nanoseconds / s} seconds`;
+    }
+    if (nanoseconds > ms) {
+        return `${nanoseconds / ms} milliseconds`;
+    }
+    return `${nanoseconds} nanoseconds`;
+}
 function printResult({ name }, result) {
-    core.info(`Took ${result.time} nanoseconds`);
     if (result.status === "error") {
         core.error(result.message, {
             title: `[${name}] Error while running tests`,
@@ -27944,6 +27954,7 @@ function printResult({ name }, result) {
                 break;
         }
     }
+    core.info(`Duration: ${formatDuration(result.time)}`);
 }
 function copyImplementationFiles(exercise) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -28027,7 +28038,10 @@ function getExercises() {
         const config = yield readJsonFile("config.json");
         const concept = yield getConceptExercises(config);
         const practice = yield getPracticeExercises(config);
-        return [...concept, ...practice];
+        return [
+            ...concept.sort((a, b) => a.name.localeCompare(b.name)),
+            ...practice.sort((a, b) => a.name.localeCompare(b.name)),
+        ];
     });
 }
 function main(options) {
