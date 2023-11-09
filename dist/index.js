@@ -27944,7 +27944,7 @@ function printResult({ name }, result) {
                 break;
         }
     }
-    core.info(`Duration: ${result.duration.toPrecision(3)} ms`);
+    core.info(`Duration: ${result.duration.toFixed(3)} ms`);
 }
 function copyImplementationFiles(exercise) {
     return __awaiter(this, void 0, void 0, function* () {

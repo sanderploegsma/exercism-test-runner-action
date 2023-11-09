@@ -113,7 +113,7 @@ function printResult({ name }: Exercise, result: TestResult) {
         break;
     }
   }
-  core.info(`Duration: ${result.duration.toPrecision(3)} ms`);
+  core.info(`Duration: ${result.duration.toFixed(3)} ms`);
 }
 
 async function copyImplementationFiles(exercise: Exercise) {
