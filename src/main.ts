@@ -1,13 +1,9 @@
-// @ts-check
-
-const core = require("@actions/core");
-const exec = require("@actions/exec");
-const io = require("@actions/io");
-const fs = require("node:fs/promises");
-const path = require("node:path");
-const chalk = require("chalk");
-
-const color = new chalk.Instance({ level: 3 });
+import * as core from "@actions/core";
+import { exec } from "@actions/exec";
+import { cp } from "@actions/io";
+import * as fs from "node:fs/promises";
+import * as path from "node:path";
+import chalk from "chalk";
 
 /**
  * Run the test runner on the given exercise.
@@ -18,7 +14,7 @@ const color = new chalk.Instance({ level: 3 });
  */
 async function runTestRunner(slug, exercisePath, image) {
   core.debug(`Running ${image} on ${slug} at ${exercisePath}`);
-  await exec.exec("docker", [
+  await exec("docker", [
     "run",
     "--rm",
     "--network",
@@ -45,7 +41,7 @@ async function runTestRunner(slug, exercisePath, image) {
 function printResults(slug, results) {
   if (results.status === "error") {
     core.error(results.message, {
-      title: `Failed to run tests for exercise ${slug}`,
+      title: `[${slug}] Error while running tests`,
     });
     return;
   }
@@ -53,13 +49,13 @@ function printResults(slug, results) {
   for (const test of results.tests) {
     switch (test.status) {
       case "pass":
-        core.info(`[${color.green(test.status.toUpperCase())}] ${test.name}`);
+        core.info(`[${chalk.green(test.status.toUpperCase())}] ${test.name}`);
         break;
       case "fail":
-        core.info(`[${color.yellow(test.status.toUpperCase())}] ${test.name}`);
+        core.info(`[${chalk.yellow(test.status.toUpperCase())}] ${test.name}`);
         break;
       case "error":
-        core.info(`[${color.red(test.status.toUpperCase())}] ${test.name}`);
+        core.info(`[${chalk.red(test.status.toUpperCase())}] ${test.name}`);
         break;
     }
   }
@@ -89,7 +85,7 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
     config.files.solution.map((/** @type {String} */ relativePath) => {
       const filePath = path.join(exercisePath, relativePath);
       const targetFilePath = `${filePath}.bak`;
-      return io.cp(filePath, targetFilePath);
+      return cp(filePath, targetFilePath);
     }),
   );
 
@@ -103,7 +99,7 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
       (/** @type {String} */ relativePath) => {
         const filePath = path.join(exercisePath, relativePath);
         const targetFilePath = path.join(targetDir, path.basename(filePath));
-        return io.cp(filePath, targetFilePath);
+        return cp(filePath, targetFilePath);
       },
     ),
   );
@@ -112,11 +108,11 @@ async function testExercise(slug, exercisePath, implementationKey, image) {
   printResults(slug, results);
 }
 
-async function main() {
+export async function main() {
   try {
     const image = core.getInput("test-runner-image", { required: true });
     core.info(`Pulling Docker image ${image}`);
-    await exec.exec("docker", ["pull", image]);
+    await exec("docker", ["pull", image]);
 
     const conceptExercises = await fs.readdir("exercises/concept");
     core.debug(`Found concept exercises: ${conceptExercises}`);
@@ -143,7 +139,3 @@ async function main() {
     core.setFailed(err);
   }
 }
-
-module.exports = {
-  main,
-};

@@ -1,8 +1,6 @@
-// @ts-check
-
 /**
  * The entrypoint for the action.
  */
-const { main } = require("./main");
+import { main } from "./main";
 
 main();
