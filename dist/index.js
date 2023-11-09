@@ -25764,7 +25764,7 @@ async function main() {
     core.info("Testing concept exercises");
     const conceptExercises = await fs.readdir("exercises/concept");
     core.debug(`Found concept exercises: ${conceptExercises}`);
-    for (const slug in conceptExercises) {
+    for (const slug of conceptExercises) {
       core.info(`Testing concept exercise ${slug}`);
       await testExercise(
         slug,
@@ -25777,7 +25777,7 @@ async function main() {
     core.info("Testing practice exercises");
     const practiceExercises = await fs.readdir("exercises/practice");
     core.debug(`Found practice exercises: ${practiceExercises}`);
-    for (const slug in practiceExercises) {
+    for (const slug of practiceExercises) {
       core.info(`Testing practice exercise ${slug}`);
       await testExercise(
         slug,
