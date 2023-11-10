@@ -27885,6 +27885,7 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 function copy(fromPath, toPath) {
     return __awaiter(this, void 0, void 0, function* () {
         core.debug(`Copying ${fromPath} to ${toPath}`);
+        yield (0,io.mkdirP)((0,external_node_path_namespaceObject.dirname)(toPath));
         return (0,io.cp)(fromPath, toPath);
     });
 }
@@ -27897,9 +27898,7 @@ function copyMetadata(exercise, workdir) {
 function copyTestFiles(exercise, workdir) {
     return __awaiter(this, void 0, void 0, function* () {
         core.debug(`Copying test files`);
-        yield Promise.all(exercise.metadata.files.test.map((file) => {
-            return copy((0,external_node_path_namespaceObject.join)(exercise.path, file), (0,external_node_path_namespaceObject.join)(workdir, file));
-        }));
+        yield Promise.all(exercise.metadata.files.test.map((file) => copy((0,external_node_path_namespaceObject.join)(exercise.path, file), (0,external_node_path_namespaceObject.join)(workdir, file))));
     });
 }
 function copyEditorFiles(exercise, workdir) {
@@ -27908,9 +27907,7 @@ function copyEditorFiles(exercise, workdir) {
             return;
         }
         core.debug(`Copying helper files`);
-        yield Promise.all(exercise.metadata.files.editor.map((file) => {
-            return copy((0,external_node_path_namespaceObject.join)(exercise.path, file), (0,external_node_path_namespaceObject.join)(workdir, file));
-        }));
+        yield Promise.all(exercise.metadata.files.editor.map((file) => copy((0,external_node_path_namespaceObject.join)(exercise.path, file), (0,external_node_path_namespaceObject.join)(workdir, file))));
     });
 }
 function copyImplementationFiles(exercise, workdir) {

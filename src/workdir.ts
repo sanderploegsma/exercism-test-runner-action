@@ -1,5 +1,5 @@
 import * as core from "@actions/core";
-import { cp } from "@actions/io";
+import { cp, mkdirP } from "@actions/io";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname, basename } from "node:path";
@@ -7,6 +7,7 @@ import { Exercise } from "./types";
 
 async function copy(fromPath: string, toPath: string) {
   core.debug(`Copying ${fromPath} to ${toPath}`);
+  await mkdirP(dirname(toPath));
   return cp(fromPath, toPath);
 }
 
@@ -21,9 +22,9 @@ async function copyMetadata(exercise: Exercise, workdir: string) {
 async function copyTestFiles(exercise: Exercise, workdir: string) {
   core.debug(`Copying test files`);
   await Promise.all(
-    exercise.metadata.files.test.map((file) => {
-      return copy(join(exercise.path, file), join(workdir, file));
-    }),
+    exercise.metadata.files.test.map((file) =>
+      copy(join(exercise.path, file), join(workdir, file)),
+    ),
   );
 }
 
@@ -34,9 +35,9 @@ async function copyEditorFiles(exercise: Exercise, workdir: string) {
 
   core.debug(`Copying helper files`);
   await Promise.all(
-    exercise.metadata.files.editor.map((file) => {
-      return copy(join(exercise.path, file), join(workdir, file));
-    }),
+    exercise.metadata.files.editor.map((file) =>
+      copy(join(exercise.path, file), join(workdir, file)),
+    ),
   );
 }
 
