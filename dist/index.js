@@ -27953,8 +27953,8 @@ function copyImplementationFiles(exercise) {
         yield Promise.all(exercise.metadata.files.solution.map((relativePath) => {
             const filePath = external_node_path_namespaceObject.join(exercise.path, relativePath);
             const targetFilePath = `${filePath}.bak`;
-            core.debug(`Copying ${filePath} to ${targetFilePath}`);
-            return (0,io.cp)(filePath, targetFilePath);
+            core.debug(`Moving ${filePath} to ${targetFilePath}`);
+            return (0,io.mv)(filePath, targetFilePath);
         }));
         core.debug("Copying implementation files");
         let files = [];

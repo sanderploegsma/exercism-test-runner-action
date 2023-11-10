@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 import { exec } from "@actions/exec";
-import { cp } from "@actions/io";
+import { cp, mv } from "@actions/io";
 import { readFile } from "node:fs/promises";
 import * as pathLib from "node:path";
 import { hrtime } from "node:process";
@@ -127,8 +127,8 @@ async function copyImplementationFiles(exercise: Exercise) {
     exercise.metadata.files.solution.map((relativePath) => {
       const filePath = pathLib.join(exercise.path, relativePath);
       const targetFilePath = `${filePath}.bak`;
-      core.debug(`Copying ${filePath} to ${targetFilePath}`);
-      return cp(filePath, targetFilePath);
+      core.debug(`Moving ${filePath} to ${targetFilePath}`);
+      return mv(filePath, targetFilePath);
     }),
   );
 
