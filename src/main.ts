@@ -1,4 +1,5 @@
 import * as core from "@actions/core";
+import { SummaryTableRow } from "@actions/core/lib/summary";
 import { exec } from "@actions/exec";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -107,7 +108,6 @@ function printResult({ name }: Exercise, result: TestResult) {
 
 interface TestSummary {
   name: string;
-  type: string;
   duration?: number;
   status: string;
 }
@@ -116,16 +116,6 @@ async function testExercise(
   exercise: Exercise,
   options: Options,
 ): Promise<TestSummary> {
-  if (exercise.type === "concept" && !options.concept) {
-    core.info(`Skipping concept exercise: ${exercise.name}`);
-    return { ...exercise, status: "Skipped" };
-  }
-
-  if (exercise.type === "practice" && !options.practice) {
-    core.info(`Skipping practice exercise: ${exercise.name}`);
-    return { ...exercise, status: "Skipped" };
-  }
-
   if (exercise.status === "wip" && !options.includeWip) {
     core.info(`Skipping work-in-progress exercise: ${exercise.name}`);
     return { ...exercise, status: "Skipped: work-in-progress" };
@@ -155,6 +145,20 @@ async function testExercise(
     case "error":
       return { ...exercise, duration: result.duration, status: "❌ Error" };
   }
+}
+
+async function testExercises(
+  exercises: Exercise[],
+  options: Options,
+): Promise<TestSummary[]> {
+  let summaries: TestSummary[] = [];
+  for (const exercise of exercises.sort((a, b) =>
+    a.name.localeCompare(b.name),
+  )) {
+    const summary = await testExercise(exercise, options);
+    summaries = [...summaries, summary];
+  }
+  return summaries;
 }
 
 async function prepare({ image }: Options) {
@@ -203,41 +207,39 @@ async function getConceptExercises(
   );
 }
 
-async function getExercises(): Promise<Exercise[]> {
-  const config = await readJsonFile<TrackConfig>("config.json");
-  const concept = await getConceptExercises(config);
-  const practice = await getPracticeExercises(config);
+function createTableFromSummaries(summaries: TestSummary[]): SummaryTableRow[] {
   return [
-    ...concept.sort((a, b) => a.name.localeCompare(b.name)),
-    ...practice.sort((a, b) => a.name.localeCompare(b.name)),
+    [
+      { data: "Exercise", header: true },
+      { data: "Status", header: true },
+      { data: "Duration (ms)", header: true },
+    ],
+    ...summaries.map((s) => [s.name, s.status, s.duration?.toFixed(3) ?? ""]),
   ];
 }
 
 export async function main(options: Options) {
   try {
     await prepare(options);
-    const exercises = await getExercises();
-    let summaries: TestSummary[] = [];
-    for (const exercise of exercises) {
-      const summary = await testExercise(exercise, options);
-      summaries = [...summaries, summary];
+    const config = await readJsonFile<TrackConfig>("config.json");
+
+    if (options.concept) {
+      const exercises = await getConceptExercises(config);
+      const summaries = await testExercises(exercises, options);
+      core.summary
+        .addHeading("Concept exercise test results", 2)
+        .addTable(createTableFromSummaries(summaries));
     }
-    core.summary
-      .addTable([
-        [
-          { data: "Exercise", header: true },
-          { data: "Type", header: true },
-          { data: "Status", header: true },
-          { data: "Duration (ms)", header: true },
-        ],
-        ...summaries.map((s) => [
-          s.name,
-          s.type,
-          s.status,
-          s.duration?.toFixed(3) ?? "",
-        ]),
-      ])
-      .write();
+
+    if (options.practice) {
+      const exercises = await getPracticeExercises(config);
+      const summaries = await testExercises(exercises, options);
+      core.summary
+        .addHeading("Practice exercise test results", 2)
+        .addTable(createTableFromSummaries(summaries));
+    }
+
+    core.summary.write();
   } catch (err) {
     if (err instanceof Error) {
       core.setFailed(err);

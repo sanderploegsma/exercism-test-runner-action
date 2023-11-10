@@ -28041,14 +28041,6 @@ function printResult({ name }, result) {
 }
 function testExercise(exercise, options) {
     return main_awaiter(this, void 0, void 0, function* () {
-        if (exercise.type === "concept" && !options.concept) {
-            core.info(`Skipping concept exercise: ${exercise.name}`);
-            return Object.assign(Object.assign({}, exercise), { status: "Skipped" });
-        }
-        if (exercise.type === "practice" && !options.practice) {
-            core.info(`Skipping practice exercise: ${exercise.name}`);
-            return Object.assign(Object.assign({}, exercise), { status: "Skipped" });
-        }
         if (exercise.status === "wip" && !options.includeWip) {
             core.info(`Skipping work-in-progress exercise: ${exercise.name}`);
             return Object.assign(Object.assign({}, exercise), { status: "Skipped: work-in-progress" });
@@ -28071,6 +28063,16 @@ function testExercise(exercise, options) {
             case "error":
                 return Object.assign(Object.assign({}, exercise), { duration: result.duration, status: "❌ Error" });
         }
+    });
+}
+function testExercises(exercises, options) {
+    return main_awaiter(this, void 0, void 0, function* () {
+        let summaries = [];
+        for (const exercise of exercises.sort((a, b) => a.name.localeCompare(b.name))) {
+            const summary = yield testExercise(exercise, options);
+            summaries = [...summaries, summary];
+        }
+        return summaries;
     });
 }
 function prepare({ image }) {
@@ -28100,45 +28102,34 @@ function getConceptExercises(config) {
         })));
     });
 }
-function getExercises() {
-    return main_awaiter(this, void 0, void 0, function* () {
-        const config = yield readJsonFile("config.json");
-        const concept = yield getConceptExercises(config);
-        const practice = yield getPracticeExercises(config);
-        return [
-            ...concept.sort((a, b) => a.name.localeCompare(b.name)),
-            ...practice.sort((a, b) => a.name.localeCompare(b.name)),
-        ];
-    });
+function createTableFromSummaries(summaries) {
+    return [
+        [
+            { data: "Exercise", header: true },
+            { data: "Status", header: true },
+            { data: "Duration (ms)", header: true },
+        ],
+        ...summaries.map((s) => { var _a, _b; return [s.name, s.status, (_b = (_a = s.duration) === null || _a === void 0 ? void 0 : _a.toFixed(3)) !== null && _b !== void 0 ? _b : ""]; }),
+    ];
 }
 function main(options) {
     return main_awaiter(this, void 0, void 0, function* () {
         try {
             yield prepare(options);
-            const exercises = yield getExercises();
-            let summaries = [];
-            for (const exercise of exercises) {
-                const summary = yield testExercise(exercise, options);
-                summaries = [...summaries, summary];
+            const config = yield readJsonFile("config.json");
+            if (options.concept) {
+                const exercises = yield getConceptExercises(config);
+                const summaries = yield testExercises(exercises, options);
+                core.summary.addHeading("Concept exercise test results", 2)
+                    .addTable(createTableFromSummaries(summaries));
             }
-            core.summary.addTable([
-                [
-                    { data: "Exercise", header: true },
-                    { data: "Type", header: true },
-                    { data: "Status", header: true },
-                    { data: "Duration (ms)", header: true },
-                ],
-                ...summaries.map((s) => {
-                    var _a, _b;
-                    return [
-                        s.name,
-                        s.type,
-                        s.status,
-                        (_b = (_a = s.duration) === null || _a === void 0 ? void 0 : _a.toFixed(3)) !== null && _b !== void 0 ? _b : "",
-                    ];
-                }),
-            ])
-                .write();
+            if (options.practice) {
+                const exercises = yield getPracticeExercises(config);
+                const summaries = yield testExercises(exercises, options);
+                core.summary.addHeading("Practice exercise test results", 2)
+                    .addTable(createTableFromSummaries(summaries));
+            }
+            core.summary.write();
         }
         catch (err) {
             if (err instanceof Error) {
