@@ -29916,7 +29916,6 @@ function runTestRunner(slug, workdir, image) {
             "--rm",
             "--network",
             "none",
-            "--read-only",
             "--mount",
             `type=bind,src=${workdir},dst=/solution`,
             "--mount",
