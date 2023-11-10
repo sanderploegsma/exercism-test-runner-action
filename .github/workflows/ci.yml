@@ -34,5 +34,5 @@ jobs:
         uses: ./.github/actions/test-runner
         with:
           test-runner-image: exercism/${{ matrix.track }}-test-runner
-          test-concept-exercises: ${{ matrix.exercises == "concept" }}
-          test-practice-exercises: ${{ matrix.exercises == "practice" }}
+          test-concept-exercises: ${{ matrix.exercises == 'concept' }}
+          test-practice-exercises: ${{ matrix.exercises == 'practice' }}
