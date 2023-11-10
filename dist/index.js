@@ -27986,11 +27986,11 @@ function testExercise(exercise, options) {
         }
         if (exercise.status === "wip" && !options.includeWip) {
             core.info(`Skipping work-in-progress exercise: ${exercise.name}`);
-            return Object.assign(Object.assign({}, exercise), { status: "Skipped" });
+            return Object.assign(Object.assign({}, exercise), { status: "Skipped: work-in-progress" });
         }
         if (exercise.status === "deprecated" && !options.includeDeprecated) {
             core.info(`Skipping deprecated exercise: ${exercise.name}`);
-            return Object.assign(Object.assign({}, exercise), { status: "Skipped" });
+            return Object.assign(Object.assign({}, exercise), { status: "Skipped: deprecated" });
         }
         core.info(`Testing exercise: ${exercise.name}`);
         yield copyImplementationFiles(exercise);

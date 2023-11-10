@@ -178,12 +178,12 @@ async function testExercise(
 
   if (exercise.status === "wip" && !options.includeWip) {
     core.info(`Skipping work-in-progress exercise: ${exercise.name}`);
-    return { ...exercise, status: "Skipped" };
+    return { ...exercise, status: "Skipped: work-in-progress" };
   }
 
   if (exercise.status === "deprecated" && !options.includeDeprecated) {
     core.info(`Skipping deprecated exercise: ${exercise.name}`);
-    return { ...exercise, status: "Skipped" };
+    return { ...exercise, status: "Skipped: deprecated" };
   }
 
   core.info(`Testing exercise: ${exercise.name}`);
