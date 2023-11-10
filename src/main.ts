@@ -55,7 +55,6 @@ async function runTestRunner(
     "--rm",
     "--network",
     "none",
-    "--read-only",
     "--mount",
     `type=bind,src=${workdir},dst=/solution`,
     "--mount",
