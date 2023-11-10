@@ -15,7 +15,6 @@ jobs:
           - c
           - cpp
           - csharp
-          - elixir
           - fsharp
           - go
           - java
