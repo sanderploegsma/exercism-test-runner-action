@@ -5,6 +5,7 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { hrtime } from "node:process";
 import { Chalk } from "chalk";
+import * as duration from "humanize-duration";
 
 const chalk = new Chalk({ level: 3 });
 
@@ -36,6 +37,10 @@ async function readJsonFile<T>(path: string): Promise<T> {
   core.debug(`Reading JSON file ${path}`);
   const data = await readFile(path, "utf8");
   return JSON.parse(data);
+}
+
+function formatDuration(ms: number): string {
+  return duration(ms, { units: ["m", "s", "ms"] });
 }
 
 async function runTestRunner(
@@ -101,7 +106,7 @@ function printResult({ name }: Exercise, result: TestResult) {
         break;
     }
   }
-  core.info(`Duration: ${result.duration.toFixed(3)} ms`);
+  core.info(`Duration: ${formatDuration(result.duration)}`);
 }
 
 interface TestSummary {
@@ -187,9 +192,13 @@ function createTableFromSummaries(summaries: TestSummary[]): SummaryTableRow[] {
     [
       { data: "Exercise", header: true },
       { data: "Status", header: true },
-      { data: "Duration (ms)", header: true },
+      { data: "Duration", header: true },
     ],
-    ...summaries.map((s) => [s.name, s.status, s.duration?.toFixed(3) ?? ""]),
+    ...summaries.map((s) => [
+      s.name,
+      s.status,
+      s.duration ? formatDuration(s.duration) : "",
+    ]),
   ];
 }
 
