@@ -15,6 +15,7 @@ jobs:
           - java
           - csharp
           - python
+          - ruby
     runs-on: ubuntu-22.04
     steps:
       - name: Check out exercism/${{ matrix.track }}
