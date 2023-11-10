@@ -27201,8 +27201,6 @@ __nccwpck_require__.r(__webpack_exports__);
 var core = __nccwpck_require__(2186);
 // EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
 var exec = __nccwpck_require__(1514);
-// EXTERNAL MODULE: ./node_modules/@actions/io/lib/io.js
-var io = __nccwpck_require__(7436);
 ;// CONCATENATED MODULE: external "node:fs/promises"
 const promises_namespaceObject = require("node:fs/promises");
 ;// CONCATENATED MODULE: external "node:path"
@@ -27867,7 +27865,9 @@ const chalkStderr = createChalk({level: stderrColor ? stderrColor.level : 0});
 
 /* harmony default export */ const source = ((/* unused pure expression or super */ null && (chalk)));
 
-;// CONCATENATED MODULE: ./src/main.ts
+// EXTERNAL MODULE: ./node_modules/@actions/io/lib/io.js
+var io = __nccwpck_require__(7436);
+;// CONCATENATED MODULE: ./src/workdir.ts
 var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -27882,18 +27882,114 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 
+function copy(fromPath, toPath) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core.debug(`Copying ${fromPath} to ${toPath}`);
+        return (0,io.cp)(fromPath, toPath);
+    });
+}
+function copyMetadata(exercise, workdir) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core.debug(`Copying metadata files`);
+        return copy((0,external_node_path_namespaceObject.join)(exercise.path, ".meta/config.json"), (0,external_node_path_namespaceObject.join)(workdir, ".meta/config.json"));
+    });
+}
+function copyTestFiles(exercise, workdir) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core.debug(`Copying test files`);
+        yield Promise.all(exercise.metadata.files.test.map((file) => {
+            return copy((0,external_node_path_namespaceObject.join)(exercise.path, file), (0,external_node_path_namespaceObject.join)(workdir, file));
+        }));
+    });
+}
+function copyEditorFiles(exercise, workdir) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!exercise.metadata.files.editor) {
+            return;
+        }
+        core.debug(`Copying helper files`);
+        yield Promise.all(exercise.metadata.files.editor.map((file) => {
+            return copy((0,external_node_path_namespaceObject.join)(exercise.path, file), (0,external_node_path_namespaceObject.join)(workdir, file));
+        }));
+    });
+}
+function copyImplementationFiles(exercise, workdir) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let solutionFiles = exercise.metadata.files.solution;
+        // Some tracks like Java have solution files in a nested structure,
+        // which we have to respect.
+        // For example, solution files are located in src/main/java,
+        // while example files are located in .meta/src/reference/java.
+        let relativeSolutionDir = (0,external_node_path_namespaceObject.dirname)(solutionFiles[0]);
+        let exampleFiles = [];
+        switch (exercise.type) {
+            case "concept":
+                exampleFiles = [...exampleFiles, ...exercise.metadata.files.exemplar];
+                break;
+            case "practice":
+                exampleFiles = [...exampleFiles, ...exercise.metadata.files.example];
+                break;
+        }
+        while (solutionFiles.length > 0 && exampleFiles.length > 0) {
+            const exampleFile = exampleFiles.shift();
+            const solutionFile = solutionFiles.shift();
+            if (exampleFile && solutionFile) {
+                yield copy((0,external_node_path_namespaceObject.join)(exercise.path, exampleFile), (0,external_node_path_namespaceObject.join)(workdir, solutionFile));
+                continue;
+            }
+            if (exampleFile) {
+                yield copy((0,external_node_path_namespaceObject.join)(exercise.path, exampleFile), (0,external_node_path_namespaceObject.join)(workdir, relativeSolutionDir, (0,external_node_path_namespaceObject.basename)(exampleFile)));
+                continue;
+            }
+            if (solutionFile) {
+                yield copy((0,external_node_path_namespaceObject.join)(exercise.path, solutionFile), (0,external_node_path_namespaceObject.join)(workdir, solutionFile));
+                continue;
+            }
+        }
+    });
+}
+function prepareWorkingDirectory(exercise) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core.debug("Creating temporary working directory");
+        const workdir = yield (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), exercise.slug));
+        core.debug(`Created temporary working directory: ${workdir}`);
+        yield Promise.all([
+            copyMetadata(exercise, workdir),
+            copyTestFiles(exercise, workdir),
+            copyEditorFiles(exercise, workdir),
+            copyImplementationFiles(exercise, workdir),
+        ]);
+        return workdir;
+    });
+}
+
+;// CONCATENATED MODULE: ./src/main.ts
+var main_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
 
 
 const main_chalk = new Chalk({ level: 3 });
+
 function readJsonFile(path) {
-    return __awaiter(this, void 0, void 0, function* () {
+    return main_awaiter(this, void 0, void 0, function* () {
         core.debug(`Reading JSON file ${path}`);
         const data = yield (0,promises_namespaceObject.readFile)(path, "utf8");
         return JSON.parse(data);
     });
 }
-function runTestRunner({ slug, path }, { image }) {
-    return __awaiter(this, void 0, void 0, function* () {
+function runTestRunner(slug, workdir, image) {
+    return main_awaiter(this, void 0, void 0, function* () {
         core.debug("Starting test runner");
         const start = external_node_process_namespaceObject.hrtime.bigint();
         yield (0,exec.exec)("docker", [
@@ -27902,9 +27998,9 @@ function runTestRunner({ slug, path }, { image }) {
             "--network",
             "none",
             "--mount",
-            `type=bind,src=${path},dst=/solution`,
+            `type=bind,src=${workdir},dst=/solution`,
             "--mount",
-            `type=bind,src=${path},dst=/output`,
+            `type=bind,src=${workdir},dst=/output`,
             "--tmpfs",
             "/tmp:rw",
             image,
@@ -27914,7 +28010,7 @@ function runTestRunner({ slug, path }, { image }) {
         ]);
         const end = external_node_process_namespaceObject.hrtime.bigint();
         core.debug("Test runner finished");
-        const results = yield readJsonFile(external_node_path_namespaceObject.join(path, "results.json"));
+        const results = yield readJsonFile((0,external_node_path_namespaceObject.join)(workdir, "results.json"));
         return Object.assign(Object.assign({}, results), { duration: Number(end - start) / 1.0e6 });
     });
 }
@@ -27946,36 +28042,8 @@ function printResult({ name }, result) {
     }
     core.info(`Duration: ${result.duration.toFixed(3)} ms`);
 }
-function copyImplementationFiles(exercise) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const targetDir = external_node_path_namespaceObject.join(exercise.path, external_node_path_namespaceObject.dirname(exercise.metadata.files.solution[0]));
-        core.debug("Backing up solution files");
-        yield Promise.all(exercise.metadata.files.solution.map((relativePath) => {
-            const filePath = external_node_path_namespaceObject.join(exercise.path, relativePath);
-            const targetFilePath = `${filePath}.bak`;
-            core.debug(`Moving ${filePath} to ${targetFilePath}`);
-            return (0,io.mv)(filePath, targetFilePath);
-        }));
-        core.debug("Copying implementation files");
-        let files = [];
-        switch (exercise.type) {
-            case "concept":
-                files = exercise.metadata.files.exemplar;
-                break;
-            case "practice":
-                files = exercise.metadata.files.example;
-                break;
-        }
-        yield Promise.all(files.map((relativePath) => {
-            const filePath = external_node_path_namespaceObject.join(exercise.path, relativePath);
-            const targetFilePath = external_node_path_namespaceObject.join(targetDir, external_node_path_namespaceObject.basename(filePath));
-            core.debug(`Copying ${filePath} to ${targetFilePath}`);
-            return (0,io.cp)(filePath, targetFilePath);
-        }));
-    });
-}
 function testExercise(exercise, options) {
-    return __awaiter(this, void 0, void 0, function* () {
+    return main_awaiter(this, void 0, void 0, function* () {
         if (exercise.type === "concept" && !options.concept) {
             core.info(`Skipping concept exercise: ${exercise.name}`);
             return Object.assign(Object.assign({}, exercise), { status: "Skipped" });
@@ -27993,8 +28061,8 @@ function testExercise(exercise, options) {
             return Object.assign(Object.assign({}, exercise), { status: "Skipped: deprecated" });
         }
         core.info(`Testing exercise: ${exercise.name}`);
-        yield copyImplementationFiles(exercise);
-        const result = yield runTestRunner(exercise, options);
+        const workdir = yield prepareWorkingDirectory(exercise);
+        const result = yield runTestRunner(exercise.slug, workdir, options.image);
         printResult(exercise, result);
         switch (result.status) {
             case "pass":
@@ -28009,34 +28077,34 @@ function testExercise(exercise, options) {
     });
 }
 function prepare({ image }) {
-    return __awaiter(this, void 0, void 0, function* () {
+    return main_awaiter(this, void 0, void 0, function* () {
         yield (0,exec.exec)("docker", ["pull", image]);
     });
 }
 function getPracticeExercises(config) {
-    return __awaiter(this, void 0, void 0, function* () {
+    return main_awaiter(this, void 0, void 0, function* () {
         const directory = "exercises/practice";
-        return Promise.all(config.exercises.practice.map((exercise) => __awaiter(this, void 0, void 0, function* () {
-            const path = external_node_path_namespaceObject.resolve(directory, exercise.slug);
-            const metadata = yield readJsonFile(external_node_path_namespaceObject.join(path, ".meta/config.json"));
+        return Promise.all(config.exercises.practice.map((exercise) => main_awaiter(this, void 0, void 0, function* () {
+            const path = (0,external_node_path_namespaceObject.resolve)(directory, exercise.slug);
+            const metadata = yield readJsonFile((0,external_node_path_namespaceObject.join)(path, ".meta/config.json"));
             return Object.assign({ type: "practice", path,
                 metadata }, exercise);
         })));
     });
 }
 function getConceptExercises(config) {
-    return __awaiter(this, void 0, void 0, function* () {
+    return main_awaiter(this, void 0, void 0, function* () {
         const directory = "exercises/concept";
-        return Promise.all(config.exercises.concept.map((exercise) => __awaiter(this, void 0, void 0, function* () {
-            const path = external_node_path_namespaceObject.resolve(directory, exercise.slug);
-            const metadata = yield readJsonFile(external_node_path_namespaceObject.join(path, ".meta/config.json"));
+        return Promise.all(config.exercises.concept.map((exercise) => main_awaiter(this, void 0, void 0, function* () {
+            const path = (0,external_node_path_namespaceObject.resolve)(directory, exercise.slug);
+            const metadata = yield readJsonFile((0,external_node_path_namespaceObject.join)(path, ".meta/config.json"));
             return Object.assign({ type: "concept", path,
                 metadata }, exercise);
         })));
     });
 }
 function getExercises() {
-    return __awaiter(this, void 0, void 0, function* () {
+    return main_awaiter(this, void 0, void 0, function* () {
         const config = yield readJsonFile("config.json");
         const concept = yield getConceptExercises(config);
         const practice = yield getPracticeExercises(config);
@@ -28047,7 +28115,7 @@ function getExercises() {
     });
 }
 function main(options) {
-    return __awaiter(this, void 0, void 0, function* () {
+    return main_awaiter(this, void 0, void 0, function* () {
         try {
             yield prepare(options);
             const exercises = yield getExercises();

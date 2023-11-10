@@ -38,6 +38,20 @@ export type PracticeExerciseMetadata = ExerciseMetadata & {
   };
 };
 
+export type ConceptExercise = ExerciseConfig & {
+  type: "concept";
+  path: string;
+  metadata: ConceptExerciseMetadata;
+};
+
+export type PracticeExercise = ExerciseConfig & {
+  type: "practice";
+  path: string;
+  metadata: PracticeExerciseMetadata;
+};
+
+export type Exercise = ConceptExercise | PracticeExercise;
+
 interface TestResult {
   name: string;
 }
