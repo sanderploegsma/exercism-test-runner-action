@@ -8,14 +8,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-java:
+  test:
+    strategy:
+      matrix:
+        track:
+          - java
+          - csharp
+          - python
     runs-on: ubuntu-22.04
     steps:
-      - name: Check out exercism/java
+      - name: Check out exercism/${{ matrix.track }}
         uses: actions/checkout@v4
         with:
-          repository: exercism/java
-          ref: 261a3f7fce08ae7083872624767e7a335f3cd515
+          repository: exercism/${{ matrix.track }}
+          ref: main
       - name: Check out current repository
         uses: actions/checkout@v4
         with:
@@ -23,20 +29,4 @@ jobs:
       - name: Run Action
         uses: ./.github/actions/test-runner
         with:
-          test-runner-image: exercism/java-test-runner
-
-  test-csharp:
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Check out exercism/csharp
-        uses: actions/checkout@v4
-        with:
-          repository: exercism/csharp
-      - name: Check out current repository
-        uses: actions/checkout@v4
-        with:
-          path: .github/actions/test-runner
-      - name: Run Action
-        uses: ./.github/actions/test-runner
-        with:
-          test-runner-image: exercism/csharp-test-runner
+          test-runner-image: exercism/${{ matrix.track }}-test-runner
