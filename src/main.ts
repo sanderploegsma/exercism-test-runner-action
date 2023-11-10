@@ -40,7 +40,7 @@ async function readJsonFile<T>(path: string): Promise<T> {
 }
 
 function formatDuration(ms: number): string {
-  return duration(ms, { units: ["m", "s", "ms"] });
+  return duration(ms, { units: ["m", "s", "ms"], round: true });
 }
 
 async function runTestRunner(

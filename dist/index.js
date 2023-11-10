@@ -29905,7 +29905,7 @@ function readJsonFile(path) {
     });
 }
 function formatDuration(ms) {
-    return humanize_duration(ms, { units: ["m", "s", "ms"] });
+    return humanize_duration(ms, { units: ["m", "s", "ms"], round: true });
 }
 function runTestRunner(slug, workdir, image) {
     return main_awaiter(this, void 0, void 0, function* () {
