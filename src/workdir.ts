@@ -1,44 +1,14 @@
 import * as core from "@actions/core";
-import { cp, mkdirP } from "@actions/io";
-import { mkdtemp } from "node:fs/promises";
+import { mkdirP } from "@actions/io";
+import { cp, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, dirname, basename } from "node:path";
+import { join, dirname, basename, relative } from "node:path";
 import { Exercise } from "./types";
 
 async function copy(fromPath: string, toPath: string) {
   core.debug(`Copying ${fromPath} to ${toPath}`);
   await mkdirP(dirname(toPath));
   return cp(fromPath, toPath);
-}
-
-async function copyMetadata(exercise: Exercise, workdir: string) {
-  core.debug(`Copying metadata files`);
-  return copy(
-    join(exercise.path, ".meta/config.json"),
-    join(workdir, ".meta/config.json"),
-  );
-}
-
-async function copyTestFiles(exercise: Exercise, workdir: string) {
-  core.debug(`Copying test files`);
-  await Promise.all(
-    exercise.metadata.files.test.map((file) =>
-      copy(join(exercise.path, file), join(workdir, file)),
-    ),
-  );
-}
-
-async function copyEditorFiles(exercise: Exercise, workdir: string) {
-  if (!exercise.metadata.files.editor) {
-    return;
-  }
-
-  core.debug(`Copying helper files`);
-  await Promise.all(
-    exercise.metadata.files.editor.map((file) =>
-      copy(join(exercise.path, file), join(workdir, file)),
-    ),
-  );
 }
 
 async function copyImplementationFiles(exercise: Exercise, workdir: string) {
@@ -49,15 +19,10 @@ async function copyImplementationFiles(exercise: Exercise, workdir: string) {
   // while example files are located in .meta/src/reference/java.
   let relativeSolutionDir = dirname(solutionFiles[0]);
 
-  let exampleFiles: string[] = [];
-  switch (exercise.type) {
-    case "concept":
-      exampleFiles = [...exampleFiles, ...exercise.metadata.files.exemplar];
-      break;
-    case "practice":
-      exampleFiles = [...exampleFiles, ...exercise.metadata.files.example];
-      break;
-  }
+  let exampleFiles: string[] = [
+    ...(exercise.metadata.files.example ?? []),
+    ...(exercise.metadata.files.exemplar ?? []),
+  ];
 
   while (solutionFiles.length > 0 && exampleFiles.length > 0) {
     const exampleFile = exampleFiles.shift();
@@ -93,12 +58,32 @@ export async function prepareWorkingDirectory(
   const workdir = await mkdtemp(join(tmpdir(), exercise.slug));
   core.debug(`Created temporary working directory: ${workdir}`);
 
-  await Promise.all([
-    copyMetadata(exercise, workdir),
-    copyTestFiles(exercise, workdir),
-    copyEditorFiles(exercise, workdir),
-    copyImplementationFiles(exercise, workdir),
-  ]);
+  core.debug("Cloning exercise directory");
+  await cp(exercise.path, workdir, {
+    recursive: true,
+    filter(source, destination): boolean {
+      const relativeSource = relative(exercise.path, source);
+      if (exercise.metadata.files.solution.some((f) => f === relativeSource)) {
+        core.debug(`Skipping solution file ${source}`);
+        return false;
+      }
+
+      if (exercise.metadata.files.example?.some((f) => f === relativeSource)) {
+        core.debug(`Skipping example file ${source}`);
+        return false;
+      }
+
+      if (exercise.metadata.files.exemplar?.some((f) => f === relativeSource)) {
+        core.debug(`Skipping exemplar file ${source}`);
+        return false;
+      }
+
+      return true;
+    },
+  });
+
+  core.debug("Copying implementation files");
+  await copyImplementationFiles(exercise, workdir);
 
   return workdir;
 }

@@ -27886,31 +27886,11 @@ function copy(fromPath, toPath) {
     return __awaiter(this, void 0, void 0, function* () {
         core.debug(`Copying ${fromPath} to ${toPath}`);
         yield (0,io.mkdirP)((0,external_node_path_namespaceObject.dirname)(toPath));
-        return (0,io.cp)(fromPath, toPath);
-    });
-}
-function copyMetadata(exercise, workdir) {
-    return __awaiter(this, void 0, void 0, function* () {
-        core.debug(`Copying metadata files`);
-        return copy((0,external_node_path_namespaceObject.join)(exercise.path, ".meta/config.json"), (0,external_node_path_namespaceObject.join)(workdir, ".meta/config.json"));
-    });
-}
-function copyTestFiles(exercise, workdir) {
-    return __awaiter(this, void 0, void 0, function* () {
-        core.debug(`Copying test files`);
-        yield Promise.all(exercise.metadata.files.test.map((file) => copy((0,external_node_path_namespaceObject.join)(exercise.path, file), (0,external_node_path_namespaceObject.join)(workdir, file))));
-    });
-}
-function copyEditorFiles(exercise, workdir) {
-    return __awaiter(this, void 0, void 0, function* () {
-        if (!exercise.metadata.files.editor) {
-            return;
-        }
-        core.debug(`Copying helper files`);
-        yield Promise.all(exercise.metadata.files.editor.map((file) => copy((0,external_node_path_namespaceObject.join)(exercise.path, file), (0,external_node_path_namespaceObject.join)(workdir, file))));
+        return (0,promises_namespaceObject.cp)(fromPath, toPath);
     });
 }
 function copyImplementationFiles(exercise, workdir) {
+    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         let solutionFiles = exercise.metadata.files.solution;
         // Some tracks like Java have solution files in a nested structure,
@@ -27918,15 +27898,10 @@ function copyImplementationFiles(exercise, workdir) {
         // For example, solution files are located in src/main/java,
         // while example files are located in .meta/src/reference/java.
         let relativeSolutionDir = (0,external_node_path_namespaceObject.dirname)(solutionFiles[0]);
-        let exampleFiles = [];
-        switch (exercise.type) {
-            case "concept":
-                exampleFiles = [...exampleFiles, ...exercise.metadata.files.exemplar];
-                break;
-            case "practice":
-                exampleFiles = [...exampleFiles, ...exercise.metadata.files.example];
-                break;
-        }
+        let exampleFiles = [
+            ...((_a = exercise.metadata.files.example) !== null && _a !== void 0 ? _a : []),
+            ...((_b = exercise.metadata.files.exemplar) !== null && _b !== void 0 ? _b : []),
+        ];
         while (solutionFiles.length > 0 && exampleFiles.length > 0) {
             const exampleFile = exampleFiles.shift();
             const solutionFile = solutionFiles.shift();
@@ -27950,12 +27925,29 @@ function prepareWorkingDirectory(exercise) {
         core.debug("Creating temporary working directory");
         const workdir = yield (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), exercise.slug));
         core.debug(`Created temporary working directory: ${workdir}`);
-        yield Promise.all([
-            copyMetadata(exercise, workdir),
-            copyTestFiles(exercise, workdir),
-            copyEditorFiles(exercise, workdir),
-            copyImplementationFiles(exercise, workdir),
-        ]);
+        core.debug("Cloning exercise directory");
+        yield (0,promises_namespaceObject.cp)(exercise.path, workdir, {
+            recursive: true,
+            filter(source, destination) {
+                var _a, _b;
+                const relativeSource = (0,external_node_path_namespaceObject.relative)(exercise.path, source);
+                if (exercise.metadata.files.solution.some((f) => f === relativeSource)) {
+                    core.debug(`Skipping solution file ${source}`);
+                    return false;
+                }
+                if ((_a = exercise.metadata.files.example) === null || _a === void 0 ? void 0 : _a.some((f) => f === relativeSource)) {
+                    core.debug(`Skipping example file ${source}`);
+                    return false;
+                }
+                if ((_b = exercise.metadata.files.exemplar) === null || _b === void 0 ? void 0 : _b.some((f) => f === relativeSource)) {
+                    core.debug(`Skipping exemplar file ${source}`);
+                    return false;
+                }
+                return true;
+            },
+        });
+        core.debug("Copying implementation files");
+        yield copyImplementationFiles(exercise, workdir);
         return workdir;
     });
 }
@@ -28080,24 +28072,12 @@ function prepare({ image }) {
         yield (0,exec.exec)("docker", ["pull", image]);
     });
 }
-function getPracticeExercises(config) {
+function getExercises(exercises, directory) {
     return main_awaiter(this, void 0, void 0, function* () {
-        const directory = "exercises/practice";
-        return Promise.all(config.exercises.practice.map((exercise) => main_awaiter(this, void 0, void 0, function* () {
+        return Promise.all(exercises.map((exercise) => main_awaiter(this, void 0, void 0, function* () {
             const path = (0,external_node_path_namespaceObject.resolve)(directory, exercise.slug);
             const metadata = yield readJsonFile((0,external_node_path_namespaceObject.join)(path, ".meta/config.json"));
-            return Object.assign({ type: "practice", path,
-                metadata }, exercise);
-        })));
-    });
-}
-function getConceptExercises(config) {
-    return main_awaiter(this, void 0, void 0, function* () {
-        const directory = "exercises/concept";
-        return Promise.all(config.exercises.concept.map((exercise) => main_awaiter(this, void 0, void 0, function* () {
-            const path = (0,external_node_path_namespaceObject.resolve)(directory, exercise.slug);
-            const metadata = yield readJsonFile((0,external_node_path_namespaceObject.join)(path, ".meta/config.json"));
-            return Object.assign({ type: "concept", path,
+            return Object.assign({ path,
                 metadata }, exercise);
         })));
     });
@@ -28118,13 +28098,13 @@ function main(options) {
             yield prepare(options);
             const config = yield readJsonFile("config.json");
             if (options.concept) {
-                const exercises = yield getConceptExercises(config);
+                const exercises = yield getExercises(config.exercises.concept, "exercises/concept");
                 const summaries = yield testExercises(exercises, options);
                 core.summary.addHeading("Concept exercise test results", 2)
                     .addTable(createTableFromSummaries(summaries));
             }
             if (options.practice) {
-                const exercises = yield getPracticeExercises(config);
+                const exercises = yield getExercises(config.exercises.practice, "exercises/practice");
                 const summaries = yield testExercises(exercises, options);
                 core.summary.addHeading("Practice exercise test results", 2)
                     .addTable(createTableFromSummaries(summaries));

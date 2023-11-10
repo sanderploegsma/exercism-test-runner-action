@@ -12,7 +12,7 @@ export interface TrackConfig {
   };
 }
 
-interface ExerciseMetadata {
+export interface ExerciseMetadata {
   authors: string[];
   contributors?: string[];
   files: {
@@ -20,37 +20,18 @@ interface ExerciseMetadata {
     test: string[];
     editor?: string[];
     invalidator?: string[];
+    exemplar?: string[];
+    example?: string[];
   };
   blurb: string;
   source?: string;
   source_url?: string;
 }
 
-export type ConceptExerciseMetadata = ExerciseMetadata & {
-  files: {
-    exemplar: string[];
-  };
-};
-
-export type PracticeExerciseMetadata = ExerciseMetadata & {
-  files: {
-    example: string[];
-  };
-};
-
-export type ConceptExercise = ExerciseConfig & {
-  type: "concept";
+export type Exercise = ExerciseConfig & {
   path: string;
-  metadata: ConceptExerciseMetadata;
+  metadata: ExerciseMetadata;
 };
-
-export type PracticeExercise = ExerciseConfig & {
-  type: "practice";
-  path: string;
-  metadata: PracticeExerciseMetadata;
-};
-
-export type Exercise = ConceptExercise | PracticeExercise;
 
 interface TestResult {
   name: string;

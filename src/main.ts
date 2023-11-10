@@ -11,11 +11,9 @@ const chalk = new Chalk({ level: 3 });
 import {
   TrackConfig,
   Exercise,
-  ConceptExercise,
-  ConceptExerciseMetadata,
-  PracticeExercise,
-  PracticeExerciseMetadata,
+  ExerciseMetadata,
   TestRunnerResult,
+  ExerciseConfig,
 } from "./types";
 import { prepareWorkingDirectory } from "./workdir";
 
@@ -165,40 +163,17 @@ async function prepare({ image }: Options) {
   await exec("docker", ["pull", image]);
 }
 
-async function getPracticeExercises(
-  config: TrackConfig,
-): Promise<PracticeExercise[]> {
-  const directory = "exercises/practice";
-
+async function getExercises(
+  exercises: ExerciseConfig[],
+  directory: string,
+): Promise<Exercise[]> {
   return Promise.all(
-    config.exercises.practice.map(async (exercise) => {
+    exercises.map(async (exercise) => {
       const path = resolve(directory, exercise.slug);
-      const metadata = await readJsonFile<PracticeExerciseMetadata>(
+      const metadata = await readJsonFile<ExerciseMetadata>(
         join(path, ".meta/config.json"),
       );
       return {
-        type: "practice",
-        path,
-        metadata,
-        ...exercise,
-      };
-    }),
-  );
-}
-
-async function getConceptExercises(
-  config: TrackConfig,
-): Promise<ConceptExercise[]> {
-  const directory = "exercises/concept";
-
-  return Promise.all(
-    config.exercises.concept.map(async (exercise) => {
-      const path = resolve(directory, exercise.slug);
-      const metadata = await readJsonFile<ConceptExerciseMetadata>(
-        join(path, ".meta/config.json"),
-      );
-      return {
-        type: "concept",
         path,
         metadata,
         ...exercise,
@@ -224,7 +199,10 @@ export async function main(options: Options) {
     const config = await readJsonFile<TrackConfig>("config.json");
 
     if (options.concept) {
-      const exercises = await getConceptExercises(config);
+      const exercises = await getExercises(
+        config.exercises.concept,
+        "exercises/concept",
+      );
       const summaries = await testExercises(exercises, options);
       core.summary
         .addHeading("Concept exercise test results", 2)
@@ -232,7 +210,10 @@ export async function main(options: Options) {
     }
 
     if (options.practice) {
-      const exercises = await getPracticeExercises(config);
+      const exercises = await getExercises(
+        config.exercises.practice,
+        "exercises/practice",
+      );
       const summaries = await testExercises(exercises, options);
       core.summary
         .addHeading("Practice exercise test results", 2)
