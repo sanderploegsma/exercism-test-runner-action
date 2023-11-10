@@ -16,9 +16,9 @@ jobs:
           - csharp
           - python
           - ruby
-        settings:
-          - { concept: true, practice: false }
-          - { concept: false, practice: true }
+        exercises:
+          - concept
+          - practice
     runs-on: ubuntu-22.04
     steps:
       - name: Check out exercism/${{ matrix.track }}
@@ -34,5 +34,5 @@ jobs:
         uses: ./.github/actions/test-runner
         with:
           test-runner-image: exercism/${{ matrix.track }}-test-runner
-          test-concept-exercises: ${{ matrix.settings.concept }}
-          test-practice-exercises: ${{ matrix.settings.practice }}
+          test-concept-exercises: ${{ matrix.exercises == "concept" }}
+          test-practice-exercises: ${{ matrix.exercises == "practice" }}
