@@ -94,6 +94,7 @@ async function testExercise(
         status: `${icon} ${passed}/${total}`,
       };
     case "error":
+      core.setFailed("One or more tests resulted in an error");
       return { ...exercise, duration: result.duration, status: "❌ Error" };
   }
 }

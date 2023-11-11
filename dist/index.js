@@ -30040,6 +30040,7 @@ function testExercise(exercise, options) {
                 const icon = passed == total ? "✅" : "⚠️";
                 return Object.assign(Object.assign({}, exercise), { duration: result.duration, status: `${icon} ${passed}/${total}` });
             case "error":
+                core.setFailed("One or more tests resulted in an error");
                 return Object.assign(Object.assign({}, exercise), { duration: result.duration, status: "❌ Error" });
         }
     });
