@@ -29940,6 +29940,7 @@ function prepareWorkingDirectory(exercise) {
     return workdir_awaiter(this, void 0, void 0, function* () {
         core.debug("Creating temporary working directory");
         const workdir = yield (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), exercise.slug));
+        yield (0,promises_namespaceObject.chmod)(workdir, 0o777);
         core.debug(`Created temporary working directory: ${workdir}`);
         core.debug("Cloning exercise directory");
         yield (0,promises_namespaceObject.cp)(exercise.path, workdir, {
