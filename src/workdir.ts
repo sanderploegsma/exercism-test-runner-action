@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 import { mkdirP } from "@actions/io";
-import { cp, mkdtemp } from "node:fs/promises";
+import { chmod, cp, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname, basename, relative } from "node:path";
 import { Exercise } from "./config";
@@ -56,6 +56,7 @@ export async function prepareWorkingDirectory(
 ): Promise<string> {
   core.debug("Creating temporary working directory");
   const workdir = await mkdtemp(join(tmpdir(), exercise.slug));
+  await chmod(workdir, 0o777);
   core.debug(`Created temporary working directory: ${workdir}`);
 
   core.debug("Cloning exercise directory");
