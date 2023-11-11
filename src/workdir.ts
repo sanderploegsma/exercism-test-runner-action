@@ -3,7 +3,7 @@ import { mkdirP } from "@actions/io";
 import { cp, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname, basename, relative } from "node:path";
-import { Exercise } from "./types";
+import { Exercise } from "./config";
 
 async function copy(fromPath: string, toPath: string) {
   core.debug(`Copying ${fromPath} to ${toPath}`);

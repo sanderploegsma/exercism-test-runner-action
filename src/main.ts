@@ -1,22 +1,19 @@
 import * as core from "@actions/core";
 import { SummaryTableRow } from "@actions/core/lib/summary";
-import { exec } from "@actions/exec";
-import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
-import { hrtime } from "node:process";
+import { resolve } from "node:path";
 import { Chalk } from "chalk";
 import * as duration from "humanize-duration";
 
-const chalk = new Chalk({ level: 3 });
-
+import { prepareTestRunner, runTestRunner, TestResult } from "./test-runner";
 import {
-  TrackConfig,
+  readTrackConfig,
+  readExerciseMetadata,
   Exercise,
-  ExerciseMetadata,
-  TestRunnerResult,
   ExerciseConfig,
-} from "./types";
+} from "./config";
 import { prepareWorkingDirectory } from "./workdir";
+
+const chalk = new Chalk({ level: 3 });
 
 export interface Options {
   image: string;
@@ -26,57 +23,8 @@ export interface Options {
   includeDeprecated: boolean;
 }
 
-type TestResult = TestRunnerResult & {
-  /**
-   * Duration of the test run in milliseconds.
-   */
-  duration: number;
-};
-
-async function readJsonFile<T>(path: string): Promise<T> {
-  core.debug(`Reading JSON file ${path}`);
-  const data = await readFile(path, "utf8");
-  return JSON.parse(data);
-}
-
 function formatDuration(ms: number): string {
   return duration(ms, { units: ["m", "s", "ms"], round: true });
-}
-
-async function runTestRunner(
-  slug: string,
-  workdir: string,
-  image: string,
-): Promise<TestResult> {
-  core.debug("Starting test runner");
-  const start = hrtime.bigint();
-  await exec("docker", [
-    "run",
-    "--rm",
-    "--network",
-    "none",
-    "--mount",
-    `type=bind,src=${workdir},dst=/solution`,
-    "--mount",
-    `type=bind,src=${workdir},dst=/output`,
-    "--mount",
-    "type=tmpfs,dst=/tmp",
-    image,
-    slug,
-    "/solution",
-    "/output",
-  ]);
-
-  const end = hrtime.bigint();
-  core.debug("Test runner finished");
-
-  const results = await readJsonFile<TestRunnerResult>(
-    join(workdir, "results.json"),
-  );
-  return {
-    ...results,
-    duration: Number(end - start) / 1.0e6,
-  };
 }
 
 function printResult({ name }: Exercise, result: TestResult) {
@@ -164,10 +112,6 @@ async function testExercises(
   return summaries;
 }
 
-async function prepare({ image }: Options) {
-  await exec("docker", ["pull", image]);
-}
-
 async function getExercises(
   exercises: ExerciseConfig[],
   directory: string,
@@ -175,9 +119,7 @@ async function getExercises(
   return Promise.all(
     exercises.map(async (exercise) => {
       const path = resolve(directory, exercise.slug);
-      const metadata = await readJsonFile<ExerciseMetadata>(
-        join(path, ".meta/config.json"),
-      );
+      const metadata = await readExerciseMetadata(path);
       return {
         path,
         metadata,
@@ -204,8 +146,8 @@ function createTableFromSummaries(summaries: TestSummary[]): SummaryTableRow[] {
 
 export async function main(options: Options) {
   try {
-    await prepare(options);
-    const config = await readJsonFile<TrackConfig>("config.json");
+    await prepareTestRunner(options.image);
+    const config = await readTrackConfig(process.cwd());
 
     if (options.concept) {
       const exercises = await getExercises(

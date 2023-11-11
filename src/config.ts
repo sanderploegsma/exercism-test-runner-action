@@ -1,3 +1,7 @@
+import { join } from "node:path";
+
+import { readJsonFile } from "./json";
+
 export interface ExerciseConfig {
   uuid: string;
   slug: string;
@@ -33,29 +37,12 @@ export type Exercise = ExerciseConfig & {
   metadata: ExerciseMetadata;
 };
 
-interface TestResult {
-  name: string;
+export async function readTrackConfig(path: string): Promise<TrackConfig> {
+  return readJsonFile<TrackConfig>(join(path, "config.json"));
 }
 
-interface FailedTestResult {
-  status: "fail" | "error";
-  message: string;
+export async function readExerciseMetadata(
+  path: string,
+): Promise<ExerciseMetadata> {
+  return readJsonFile<ExerciseMetadata>(join(path, ".meta/config.json"));
 }
-
-interface PassedTestResult {
-  status: "pass";
-}
-
-interface TestRunnerPassedOrFailedResult {
-  status: "pass" | "fail";
-  tests: Array<TestResult & (FailedTestResult | PassedTestResult)>;
-}
-
-interface TestRunnerErrorResult {
-  status: "error";
-  message: string;
-}
-
-export type TestRunnerResult =
-  | TestRunnerPassedOrFailedResult
-  | TestRunnerErrorResult;

@@ -29123,14 +29123,8 @@ __nccwpck_require__.r(__webpack_exports__);
 
 // EXTERNAL MODULE: ./node_modules/@actions/core/lib/core.js
 var core = __nccwpck_require__(2186);
-// EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
-var exec = __nccwpck_require__(1514);
-;// CONCATENATED MODULE: external "node:fs/promises"
-const promises_namespaceObject = require("node:fs/promises");
 ;// CONCATENATED MODULE: external "node:path"
 const external_node_path_namespaceObject = require("node:path");
-;// CONCATENATED MODULE: external "node:process"
-const external_node_process_namespaceObject = require("node:process");
 ;// CONCATENATED MODULE: ./node_modules/chalk/source/vendor/ansi-styles/index.js
 const ANSI_BACKGROUND_OFFSET = 10;
 
@@ -29356,6 +29350,8 @@ const ansiStyles = assembleStyles();
 
 /* harmony default export */ const ansi_styles = (ansiStyles);
 
+;// CONCATENATED MODULE: external "node:process"
+const external_node_process_namespaceObject = require("node:process");
 ;// CONCATENATED MODULE: external "node:os"
 const external_node_os_namespaceObject = require("node:os");
 ;// CONCATENATED MODULE: external "node:tty"
@@ -29791,10 +29787,104 @@ const chalkStderr = createChalk({level: stderrColor ? stderrColor.level : 0});
 
 // EXTERNAL MODULE: ./node_modules/humanize-duration/humanize-duration.js
 var humanize_duration = __nccwpck_require__(1369);
+// EXTERNAL MODULE: ./node_modules/@actions/exec/lib/exec.js
+var exec = __nccwpck_require__(1514);
+;// CONCATENATED MODULE: external "node:fs/promises"
+const promises_namespaceObject = require("node:fs/promises");
+;// CONCATENATED MODULE: ./src/json.ts
+var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+function readJsonFile(file) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core.debug(`Reading JSON file ${file}`);
+        const data = yield (0,promises_namespaceObject.readFile)(file, "utf8");
+        return JSON.parse(data);
+    });
+}
+
+;// CONCATENATED MODULE: ./src/test-runner.ts
+var test_runner_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+
+
+
+function prepareTestRunner(image) {
+    return test_runner_awaiter(this, void 0, void 0, function* () {
+        return (0,exec.exec)("docker", ["pull", image]);
+    });
+}
+function runTestRunner(slug, workdir, image) {
+    return test_runner_awaiter(this, void 0, void 0, function* () {
+        core.debug("Starting test runner");
+        const start = external_node_process_namespaceObject.hrtime.bigint();
+        yield (0,exec.exec)("docker", [
+            "run",
+            "--rm",
+            "--network",
+            "none",
+            "--mount",
+            `type=bind,src=${workdir},dst=/solution`,
+            "--mount",
+            `type=bind,src=${workdir},dst=/output`,
+            "--mount",
+            "type=tmpfs,dst=/tmp",
+            image,
+            slug,
+            "/solution",
+            "/output",
+        ]);
+        const end = external_node_process_namespaceObject.hrtime.bigint();
+        core.debug("Test runner finished");
+        const results = yield readJsonFile((0,external_node_path_namespaceObject.join)(workdir, "results.json"));
+        return Object.assign(Object.assign({}, results), { duration: Number(end - start) / 1.0e6 });
+    });
+}
+
+;// CONCATENATED MODULE: ./src/config.ts
+var config_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+
+
+function readTrackConfig(path) {
+    return config_awaiter(this, void 0, void 0, function* () {
+        return readJsonFile((0,external_node_path_namespaceObject.join)(path, "config.json"));
+    });
+}
+function readExerciseMetadata(path) {
+    return config_awaiter(this, void 0, void 0, function* () {
+        return readJsonFile((0,external_node_path_namespaceObject.join)(path, ".meta/config.json"));
+    });
+}
+
 // EXTERNAL MODULE: ./node_modules/@actions/io/lib/io.js
 var io = __nccwpck_require__(7436);
 ;// CONCATENATED MODULE: ./src/workdir.ts
-var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
+var workdir_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
@@ -29809,7 +29899,7 @@ var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argume
 
 
 function copy(fromPath, toPath) {
-    return __awaiter(this, void 0, void 0, function* () {
+    return workdir_awaiter(this, void 0, void 0, function* () {
         core.debug(`Copying ${fromPath} to ${toPath}`);
         yield (0,io.mkdirP)((0,external_node_path_namespaceObject.dirname)(toPath));
         return (0,promises_namespaceObject.cp)(fromPath, toPath);
@@ -29817,7 +29907,7 @@ function copy(fromPath, toPath) {
 }
 function copyImplementationFiles(exercise, workdir) {
     var _a, _b;
-    return __awaiter(this, void 0, void 0, function* () {
+    return workdir_awaiter(this, void 0, void 0, function* () {
         let solutionFiles = exercise.metadata.files.solution;
         // Some tracks like Java have solution files in a nested structure,
         // which we have to respect.
@@ -29847,7 +29937,7 @@ function copyImplementationFiles(exercise, workdir) {
     });
 }
 function prepareWorkingDirectory(exercise) {
-    return __awaiter(this, void 0, void 0, function* () {
+    return workdir_awaiter(this, void 0, void 0, function* () {
         core.debug("Creating temporary working directory");
         const workdir = yield (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), exercise.slug));
         core.debug(`Created temporary working directory: ${workdir}`);
@@ -29896,42 +29986,8 @@ var main_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arg
 
 
 const main_chalk = new Chalk({ level: 3 });
-
-function readJsonFile(path) {
-    return main_awaiter(this, void 0, void 0, function* () {
-        core.debug(`Reading JSON file ${path}`);
-        const data = yield (0,promises_namespaceObject.readFile)(path, "utf8");
-        return JSON.parse(data);
-    });
-}
 function formatDuration(ms) {
     return humanize_duration(ms, { units: ["m", "s", "ms"], round: true });
-}
-function runTestRunner(slug, workdir, image) {
-    return main_awaiter(this, void 0, void 0, function* () {
-        core.debug("Starting test runner");
-        const start = external_node_process_namespaceObject.hrtime.bigint();
-        yield (0,exec.exec)("docker", [
-            "run",
-            "--rm",
-            "--network",
-            "none",
-            "--mount",
-            `type=bind,src=${workdir},dst=/solution`,
-            "--mount",
-            `type=bind,src=${workdir},dst=/output`,
-            "--mount",
-            "type=tmpfs,dst=/tmp",
-            image,
-            slug,
-            "/solution",
-            "/output",
-        ]);
-        const end = external_node_process_namespaceObject.hrtime.bigint();
-        core.debug("Test runner finished");
-        const results = yield readJsonFile((0,external_node_path_namespaceObject.join)(workdir, "results.json"));
-        return Object.assign(Object.assign({}, results), { duration: Number(end - start) / 1.0e6 });
-    });
 }
 function printResult({ name }, result) {
     if (result.status === "error") {
@@ -29997,16 +30053,11 @@ function testExercises(exercises, options) {
         return summaries;
     });
 }
-function prepare({ image }) {
-    return main_awaiter(this, void 0, void 0, function* () {
-        yield (0,exec.exec)("docker", ["pull", image]);
-    });
-}
 function getExercises(exercises, directory) {
     return main_awaiter(this, void 0, void 0, function* () {
         return Promise.all(exercises.map((exercise) => main_awaiter(this, void 0, void 0, function* () {
             const path = (0,external_node_path_namespaceObject.resolve)(directory, exercise.slug);
-            const metadata = yield readJsonFile((0,external_node_path_namespaceObject.join)(path, ".meta/config.json"));
+            const metadata = yield readExerciseMetadata(path);
             return Object.assign({ path,
                 metadata }, exercise);
         })));
@@ -30029,8 +30080,8 @@ function createTableFromSummaries(summaries) {
 function main(options) {
     return main_awaiter(this, void 0, void 0, function* () {
         try {
-            yield prepare(options);
-            const config = yield readJsonFile("config.json");
+            yield prepareTestRunner(options.image);
+            const config = yield readTrackConfig(process.cwd());
             if (options.concept) {
                 const exercises = yield getExercises(config.exercises.concept, "exercises/concept");
                 const summaries = yield testExercises(exercises, options);
