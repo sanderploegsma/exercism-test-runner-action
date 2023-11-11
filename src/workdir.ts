@@ -24,7 +24,7 @@ async function copyImplementationFiles(exercise: Exercise, workdir: string) {
     ...(exercise.metadata.files.exemplar ?? []),
   ];
 
-  while (solutionFiles.length > 0 && exampleFiles.length > 0) {
+  while (solutionFiles.length > 0 || exampleFiles.length > 0) {
     const exampleFile = exampleFiles.shift();
     const solutionFile = solutionFiles.shift();
 
@@ -56,7 +56,7 @@ export async function prepareWorkingDirectory(
 ): Promise<string> {
   core.debug("Creating temporary working directory");
   const workdir = await mkdtemp(join(tmpdir(), exercise.slug));
-  await chmod(workdir, 0o777);
+  await chmod(workdir, "1777");
   core.debug(`Created temporary working directory: ${workdir}`);
 
   core.debug("Cloning exercise directory");
