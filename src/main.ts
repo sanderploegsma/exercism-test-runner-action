@@ -57,24 +57,30 @@ function printResult({ name }: Exercise, result: TestResult) {
   core.info(`Duration: ${formatDuration(result.duration)}`);
 }
 
-interface TestSummary {
-  name: string;
-  duration?: number;
-  status: string;
+interface ExerciseTestSkipped {
+  status: "skipped";
+  skipReason: string;
+  exercise: Exercise;
 }
+
+type ExerciseTestResult =
+  | ExerciseTestSkipped
+  | (TestResult & {
+      exercise: Exercise;
+    });
 
 async function testExercise(
   exercise: Exercise,
   options: Options,
-): Promise<TestSummary> {
+): Promise<ExerciseTestResult> {
   if (exercise.status === "wip" && !options.includeWip) {
     core.info(`Skipping work-in-progress exercise: ${exercise.name}`);
-    return { ...exercise, status: "Skipped: work-in-progress" };
+    return { status: "skipped", skipReason: "work-in-progress", exercise };
   }
 
   if (exercise.status === "deprecated" && !options.includeDeprecated) {
     core.info(`Skipping deprecated exercise: ${exercise.name}`);
-    return { ...exercise, status: "Skipped: deprecated" };
+    return { status: "skipped", skipReason: "deprecated", exercise };
   }
 
   core.info(`Testing exercise: ${exercise.name}`);
@@ -82,35 +88,21 @@ async function testExercise(
   const result = await runTestRunner(exercise.slug, workdir, options.image);
   printResult(exercise, result);
 
-  switch (result.status) {
-    case "pass":
-    case "fail":
-      const passed = result.tests.filter((t) => t.status === "pass").length;
-      const total = result.tests.length;
-      const icon = passed == total ? "✅" : "⚠️";
-      return {
-        ...exercise,
-        duration: result.duration,
-        status: `${icon} ${passed}/${total}`,
-      };
-    case "error":
-      core.setFailed("One or more tests resulted in an error");
-      return { ...exercise, duration: result.duration, status: "❌ Error" };
-  }
+  return { ...result, exercise };
 }
 
 async function testExercises(
   exercises: Exercise[],
   options: Options,
-): Promise<TestSummary[]> {
-  let summaries: TestSummary[] = [];
+): Promise<ExerciseTestResult[]> {
+  let results: ExerciseTestResult[] = [];
   for (const exercise of exercises.sort((a, b) =>
     a.name.localeCompare(b.name),
   )) {
-    const summary = await testExercise(exercise, options);
-    summaries = [...summaries, summary];
+    const result = await testExercise(exercise, options);
+    results = [...results, result];
   }
-  return summaries;
+  return results;
 }
 
 async function getExercises(
@@ -130,17 +122,43 @@ async function getExercises(
   );
 }
 
-function createTableFromSummaries(summaries: TestSummary[]): SummaryTableRow[] {
+function createSummaryTable(results: ExerciseTestResult[]): SummaryTableRow[] {
+  const getStatus = (result: ExerciseTestResult): string => {
+    switch (result.status) {
+      case "pass":
+      case "fail":
+        const passed = result.tests.filter((t) => t.status === "pass").length;
+        const total = result.tests.length;
+        const icon = passed == total ? "✅" : "⚠️";
+        return `${icon} ${passed}/${total}`;
+      case "error":
+        return "❌ Error";
+      case "skipped":
+        return `Skipped: ${result.skipReason}`;
+    }
+  };
+
+  const getDuration = (result: ExerciseTestResult): string => {
+    switch (result.status) {
+      case "skipped":
+        return "";
+      case "pass":
+      case "fail":
+      case "error":
+        return formatDuration(result.duration);
+    }
+  };
+
   return [
     [
       { data: "Exercise", header: true },
       { data: "Status", header: true },
       { data: "Duration", header: true },
     ],
-    ...summaries.map((s) => [
-      s.name,
-      s.status,
-      s.duration ? formatDuration(s.duration) : "",
+    ...results.map((result) => [
+      result.exercise.name,
+      getStatus(result),
+      getDuration(result),
     ]),
   ];
 }
@@ -155,10 +173,17 @@ export async function main(options: Options) {
         config.exercises.concept,
         "exercises/concept",
       );
-      const summaries = await testExercises(exercises, options);
+      const results = await testExercises(exercises, options);
       core.summary
         .addHeading("Concept exercise test results", 2)
-        .addTable(createTableFromSummaries(summaries));
+        .addTable(createSummaryTable(results));
+
+      const errored = results
+        .filter((r) => r.status === "error")
+        .map((r) => r.exercise.name);
+      if (errored.length > 0) {
+        core.setFailed(`Concept exercises errored: ${errored.join(", ")}`);
+      }
     }
 
     if (options.practice) {
@@ -166,10 +191,17 @@ export async function main(options: Options) {
         config.exercises.practice,
         "exercises/practice",
       );
-      const summaries = await testExercises(exercises, options);
+      const results = await testExercises(exercises, options);
       core.summary
         .addHeading("Practice exercise test results", 2)
-        .addTable(createTableFromSummaries(summaries));
+        .addTable(createSummaryTable(results));
+
+      const errored = results
+        .filter((r) => r.status === "error")
+        .map((r) => r.exercise.name);
+      if (errored.length > 0) {
+        core.setFailed(`Practice exercises errored: ${errored.join(", ")}`);
+      }
     }
 
     core.summary.write();

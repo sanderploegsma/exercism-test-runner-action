@@ -30022,37 +30022,27 @@ function testExercise(exercise, options) {
     return main_awaiter(this, void 0, void 0, function* () {
         if (exercise.status === "wip" && !options.includeWip) {
             core.info(`Skipping work-in-progress exercise: ${exercise.name}`);
-            return Object.assign(Object.assign({}, exercise), { status: "Skipped: work-in-progress" });
+            return { status: "skipped", skipReason: "work-in-progress", exercise };
         }
         if (exercise.status === "deprecated" && !options.includeDeprecated) {
             core.info(`Skipping deprecated exercise: ${exercise.name}`);
-            return Object.assign(Object.assign({}, exercise), { status: "Skipped: deprecated" });
+            return { status: "skipped", skipReason: "deprecated", exercise };
         }
         core.info(`Testing exercise: ${exercise.name}`);
         const workdir = yield prepareWorkingDirectory(exercise);
         const result = yield runTestRunner(exercise.slug, workdir, options.image);
         printResult(exercise, result);
-        switch (result.status) {
-            case "pass":
-            case "fail":
-                const passed = result.tests.filter((t) => t.status === "pass").length;
-                const total = result.tests.length;
-                const icon = passed == total ? "✅" : "⚠️";
-                return Object.assign(Object.assign({}, exercise), { duration: result.duration, status: `${icon} ${passed}/${total}` });
-            case "error":
-                core.setFailed("One or more tests resulted in an error");
-                return Object.assign(Object.assign({}, exercise), { duration: result.duration, status: "❌ Error" });
-        }
+        return Object.assign(Object.assign({}, result), { exercise });
     });
 }
 function testExercises(exercises, options) {
     return main_awaiter(this, void 0, void 0, function* () {
-        let summaries = [];
+        let results = [];
         for (const exercise of exercises.sort((a, b) => a.name.localeCompare(b.name))) {
-            const summary = yield testExercise(exercise, options);
-            summaries = [...summaries, summary];
+            const result = yield testExercise(exercise, options);
+            results = [...results, result];
         }
-        return summaries;
+        return results;
     });
 }
 function getExercises(exercises, directory) {
@@ -30065,17 +30055,41 @@ function getExercises(exercises, directory) {
         })));
     });
 }
-function createTableFromSummaries(summaries) {
+function createSummaryTable(results) {
+    const getStatus = (result) => {
+        switch (result.status) {
+            case "pass":
+            case "fail":
+                const passed = result.tests.filter((t) => t.status === "pass").length;
+                const total = result.tests.length;
+                const icon = passed == total ? "✅" : "⚠️";
+                return `${icon} ${passed}/${total}`;
+            case "error":
+                return "❌ Error";
+            case "skipped":
+                return `Skipped: ${result.skipReason}`;
+        }
+    };
+    const getDuration = (result) => {
+        switch (result.status) {
+            case "skipped":
+                return "";
+            case "pass":
+            case "fail":
+            case "error":
+                return formatDuration(result.duration);
+        }
+    };
     return [
         [
             { data: "Exercise", header: true },
             { data: "Status", header: true },
             { data: "Duration", header: true },
         ],
-        ...summaries.map((s) => [
-            s.name,
-            s.status,
-            s.duration ? formatDuration(s.duration) : "",
+        ...results.map((result) => [
+            result.exercise.name,
+            getStatus(result),
+            getDuration(result),
         ]),
     ];
 }
@@ -30086,15 +30100,27 @@ function main(options) {
             const config = yield readTrackConfig(process.cwd());
             if (options.concept) {
                 const exercises = yield getExercises(config.exercises.concept, "exercises/concept");
-                const summaries = yield testExercises(exercises, options);
+                const results = yield testExercises(exercises, options);
                 core.summary.addHeading("Concept exercise test results", 2)
-                    .addTable(createTableFromSummaries(summaries));
+                    .addTable(createSummaryTable(results));
+                const errored = results
+                    .filter((r) => r.status === "error")
+                    .map((r) => r.exercise.name);
+                if (errored.length > 0) {
+                    core.setFailed(`Concept exercises errored: ${errored.join(", ")}`);
+                }
             }
             if (options.practice) {
                 const exercises = yield getExercises(config.exercises.practice, "exercises/practice");
-                const summaries = yield testExercises(exercises, options);
+                const results = yield testExercises(exercises, options);
                 core.summary.addHeading("Practice exercise test results", 2)
-                    .addTable(createTableFromSummaries(summaries));
+                    .addTable(createSummaryTable(results));
+                const errored = results
+                    .filter((r) => r.status === "error")
+                    .map((r) => r.exercise.name);
+                if (errored.length > 0) {
+                    core.setFailed(`Practice exercises errored: ${errored.join(", ")}`);
+                }
             }
             core.summary.write();
         }
