@@ -20,18 +20,11 @@ jobs:
           - go
           - java
           - javascript
+          - kotlin
           - python
           - ruby
           - rust
           - swift
-        exercises:
-          - concept
-          - practice
-        exclude:
-          - track: c
-            exercises: concept
-          - track: rust
-            exercises: concept
       fail-fast: false
     runs-on: ubuntu-22.04
     steps:
@@ -48,5 +41,3 @@ jobs:
         uses: ./.github/actions/test-runner
         with:
           test-runner-image: exercism/${{ matrix.track }}-test-runner
-          test-concept-exercises: ${{ matrix.exercises == 'concept' }}
-          test-practice-exercises: ${{ matrix.exercises == 'practice' }}
