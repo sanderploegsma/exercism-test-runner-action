@@ -30098,9 +30098,9 @@ function main(options) {
         try {
             yield prepareTestRunner(options.image);
             const config = yield readTrackConfig(process.cwd());
-            if (options.concept) {
-                const exercises = yield getExercises(config.exercises.concept, "exercises/concept");
-                const results = yield testExercises(exercises, options);
+            const conceptExercises = yield getExercises(config.exercises.concept, "exercises/concept");
+            if (options.concept && conceptExercises.length > 0) {
+                const results = yield testExercises(conceptExercises, options);
                 core.summary.addHeading("Concept exercise test results", 2)
                     .addTable(createSummaryTable(results));
                 const errored = results
@@ -30110,9 +30110,9 @@ function main(options) {
                     core.setFailed(`Concept exercises errored: ${errored.join(", ")}`);
                 }
             }
-            if (options.practice) {
-                const exercises = yield getExercises(config.exercises.practice, "exercises/practice");
-                const results = yield testExercises(exercises, options);
+            const practiceExercises = yield getExercises(config.exercises.practice, "exercises/practice");
+            if (options.practice && practiceExercises.length > 0) {
+                const results = yield testExercises(practiceExercises, options);
                 core.summary.addHeading("Practice exercise test results", 2)
                     .addTable(createSummaryTable(results));
                 const errored = results

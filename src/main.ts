@@ -168,12 +168,13 @@ export async function main(options: Options) {
     await prepareTestRunner(options.image);
     const config = await readTrackConfig(process.cwd());
 
-    if (options.concept) {
-      const exercises = await getExercises(
-        config.exercises.concept,
-        "exercises/concept",
-      );
-      const results = await testExercises(exercises, options);
+    const conceptExercises = await getExercises(
+      config.exercises.concept,
+      "exercises/concept",
+    );
+
+    if (options.concept && conceptExercises.length > 0) {
+      const results = await testExercises(conceptExercises, options);
       core.summary
         .addHeading("Concept exercise test results", 2)
         .addTable(createSummaryTable(results));
@@ -186,12 +187,13 @@ export async function main(options: Options) {
       }
     }
 
-    if (options.practice) {
-      const exercises = await getExercises(
-        config.exercises.practice,
-        "exercises/practice",
-      );
-      const results = await testExercises(exercises, options);
+    const practiceExercises = await getExercises(
+      config.exercises.practice,
+      "exercises/practice",
+    );
+
+    if (options.practice && practiceExercises.length > 0) {
+      const results = await testExercises(practiceExercises, options);
       core.summary
         .addHeading("Practice exercise test results", 2)
         .addTable(createSummaryTable(results));
