@@ -2,6 +2,11 @@ import { join } from "node:path";
 
 import { readJsonFile } from "./json";
 
+/**
+ * Configuration for a single exercise.
+ *
+ * @see {@link https://exercism.org/docs/building/tracks/config-json#h-exercises config.json}
+ */
 export interface ExerciseConfig {
   uuid: string;
   slug: string;
@@ -9,6 +14,11 @@ export interface ExerciseConfig {
   status?: "wip" | "beta" | "active" | "deprecated";
 }
 
+/**
+ * Configuration for the Exercism track.
+ *
+ * @see {@link https://exercism.org/docs/building/tracks/config-json config.json}
+ */
 export interface TrackConfig {
   exercises: {
     concept: ExerciseConfig[];
@@ -16,6 +26,12 @@ export interface TrackConfig {
   };
 }
 
+/**
+ * Metadata for a single exercise.
+ *
+ * @see {@link https://exercism.org/docs/building/tracks/concept-exercises#h-file-meta-config-json Concept exercise config.json}
+ * @see {@link https://exercism.org/docs/building/tracks/practice-exercises#h-file-meta-config-json Practice exercise config.json}
+ */
 export interface ExerciseMetadata {
   authors: string[];
   contributors?: string[];

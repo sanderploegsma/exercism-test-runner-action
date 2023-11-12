@@ -5,30 +5,68 @@ import { hrtime } from "node:process";
 
 import { readJsonFile } from "./json";
 
+/**
+ * A single test passed.
+ *
+ * @see {@link https://exercism.org/docs/building/tooling/test-runners/interface#h-per-test Test Runner interface}
+ */
 interface TestPassed {
   name: string;
   status: "pass";
 }
 
+/**
+ * A single test failed or errored.
+ *
+ * @see {@link https://exercism.org/docs/building/tooling/test-runners/interface#h-per-test Test Runner interface}
+ */
 interface TestFailed {
   name: string;
   status: "fail" | "error";
   message: string;
 }
 
-interface TestRunnerPassedOrFailedResult {
-  status: "pass" | "fail";
+/**
+ * All tests passed.
+ *
+ * @see {@link https://exercism.org/docs/building/tooling/test-runners/interface Test Runner interface}
+ */
+interface AllTestsPassed {
+  status: "pass";
+  tests: Array<TestPassed>;
+}
+
+/**
+ * One or more tests didn't pass.
+ *
+ * @see {@link https://exercism.org/docs/building/tooling/test-runners/interface Test Runner interface}
+ */
+interface OneOrMoreTestsFailed {
+  status: "fail";
   tests: Array<TestPassed | TestFailed>;
 }
 
-interface TestRunnerErrorResult {
+/**
+ * An error occurred when running the tests.
+ *
+ * @see {@link https://exercism.org/docs/building/tooling/test-runners/interface Test Runner interface}
+ */
+interface ErrorRunningTests {
   status: "error";
   message: string;
 }
 
-type TestRunnerResult = TestRunnerPassedOrFailedResult | TestRunnerErrorResult;
+/**
+ * Results from running the tests.
+ *
+ * @see {@link https://exercism.org/docs/building/tooling/test-runners/interface Test Runner interface}
+ */
+type TestRunnerOutput =
+  | AllTestsPassed
+  | OneOrMoreTestsFailed
+  | ErrorRunningTests;
 
-export type TestResult = TestRunnerResult & {
+export type TestResults = TestRunnerOutput & {
   /**
    * Duration of the test run in milliseconds.
    */
@@ -43,7 +81,7 @@ export async function runTestRunner(
   slug: string,
   workdir: string,
   image: string,
-): Promise<TestResult> {
+): Promise<TestResults> {
   core.debug("Starting test runner");
   const start = hrtime.bigint();
   await exec("docker", [
@@ -66,7 +104,7 @@ export async function runTestRunner(
   const end = hrtime.bigint();
   core.debug("Test runner finished");
 
-  const results = await readJsonFile<TestRunnerResult>(
+  const results = await readJsonFile<TestRunnerOutput>(
     join(workdir, "results.json"),
   );
   return {

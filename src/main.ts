@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { Chalk } from "chalk";
 import * as duration from "humanize-duration";
 
-import { prepareTestRunner, runTestRunner, TestResult } from "./test-runner";
+import { prepareTestRunner, runTestRunner, TestResults } from "./test-runner";
 import {
   readTrackConfig,
   readExerciseMetadata,
@@ -27,7 +27,7 @@ function formatDuration(ms: number): string {
   return duration(ms, { units: ["m", "s", "ms"], round: true });
 }
 
-function printResult({ name }: Exercise, result: TestResult) {
+function printResult({ name }: Exercise, result: TestResults) {
   if (result.status === "error") {
     core.error(result.message, {
       title: `[${name}] Error while running tests`,
@@ -57,17 +57,14 @@ function printResult({ name }: Exercise, result: TestResult) {
   core.info(`Duration: ${formatDuration(result.duration)}`);
 }
 
-interface ExerciseTestSkipped {
+interface TestsSkipped {
   status: "skipped";
   skipReason: string;
-  exercise: Exercise;
 }
 
-type ExerciseTestResult =
-  | ExerciseTestSkipped
-  | (TestResult & {
-      exercise: Exercise;
-    });
+type ExerciseTestResult = (TestResults | TestsSkipped) & {
+  exercise: Exercise;
+};
 
 async function testExercise(
   exercise: Exercise,
