@@ -30048,6 +30048,11 @@ function testExercises(exercises, options) {
         return results;
     });
 }
+function testExercisesParallel(exercises, options) {
+    return main_awaiter(this, void 0, void 0, function* () {
+        return Promise.all(exercises.map((exercise) => testExercise(exercise, options)));
+    });
+}
 function getExercises(exercises, directory) {
     return main_awaiter(this, void 0, void 0, function* () {
         return Promise.all(exercises.map((exercise) => main_awaiter(this, void 0, void 0, function* () {
@@ -30103,7 +30108,7 @@ function main(options) {
             const config = yield readTrackConfig(process.cwd());
             const conceptExercises = yield getExercises(config.exercises.concept, "exercises/concept");
             if (options.concept && conceptExercises.length > 0) {
-                const results = yield testExercises(conceptExercises, options);
+                const results = yield testExercisesParallel(conceptExercises, options);
                 core.summary.addHeading("Concept exercise test results", 2)
                     .addTable(createSummaryTable(results));
                 const errored = results
@@ -30115,7 +30120,7 @@ function main(options) {
             }
             const practiceExercises = yield getExercises(config.exercises.practice, "exercises/practice");
             if (options.practice && practiceExercises.length > 0) {
-                const results = yield testExercises(practiceExercises, options);
+                const results = yield testExercisesParallel(practiceExercises, options);
                 core.summary.addHeading("Practice exercise test results", 2)
                     .addTable(createSummaryTable(results));
                 const errored = results
