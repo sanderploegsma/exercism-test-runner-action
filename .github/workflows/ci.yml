@@ -18,9 +18,7 @@ jobs:
           - elixir
           - fsharp
           - go
-          - java
           - javascript
-          - kotlin
           - python
           - ruby
           - rust
@@ -41,3 +39,27 @@ jobs:
         uses: ./.github/actions/test-runner
         with:
           test-runner-image: exercism/${{ matrix.track }}-test-runner
+
+  test-java-kotlin:
+    strategy:
+      matrix:
+        track:
+          - java
+          - kotlin
+      fail-fast: false
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out exercism/${{ matrix.track }}
+        uses: actions/checkout@v4
+        with:
+          repository: exercism/${{ matrix.track }}
+          ref: main
+      - name: Check out current repository
+        uses: actions/checkout@v4
+        with:
+          path: .github/actions/test-runner
+      - name: Run Action
+        uses: ./.github/actions/test-runner
+        with:
+          test-runner-image: exercism/${{ matrix.track }}-test-runner
+          rename-example-files: false

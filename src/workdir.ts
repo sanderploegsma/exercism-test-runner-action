@@ -5,13 +5,21 @@ import { tmpdir } from "node:os";
 import { join, dirname, basename, relative } from "node:path";
 import { Exercise } from "./config";
 
+export interface WorkDirOptions {
+  renameExampleFiles: boolean;
+}
+
 async function copy(fromPath: string, toPath: string) {
   core.debug(`Copying ${fromPath} to ${toPath}`);
   await mkdirP(dirname(toPath));
   return cp(fromPath, toPath);
 }
 
-async function copyImplementationFiles(exercise: Exercise, workdir: string) {
+async function copyImplementationFiles(
+  exercise: Exercise,
+  workdir: string,
+  { renameExampleFiles }: WorkDirOptions,
+) {
   let solutionFiles = exercise.metadata.files.solution;
   // Some tracks like Java have solution files in a nested structure,
   // which we have to respect.
@@ -23,6 +31,17 @@ async function copyImplementationFiles(exercise: Exercise, workdir: string) {
     ...(exercise.metadata.files.example ?? []),
     ...(exercise.metadata.files.exemplar ?? []),
   ];
+
+  if (!renameExampleFiles) {
+    return Promise.all(
+      exampleFiles.map((file) =>
+        copy(
+          join(exercise.path, file),
+          join(workdir, relativeSolutionDir, basename(file)),
+        ),
+      ),
+    );
+  }
 
   while (solutionFiles.length > 0 || exampleFiles.length > 0) {
     const exampleFile = exampleFiles.shift();
@@ -53,6 +72,7 @@ async function copyImplementationFiles(exercise: Exercise, workdir: string) {
 
 export async function prepareWorkingDirectory(
   exercise: Exercise,
+  options: WorkDirOptions,
 ): Promise<string> {
   core.debug("Creating temporary working directory");
   const workdir = await mkdtemp(join(tmpdir(), exercise.slug));
@@ -84,7 +104,7 @@ export async function prepareWorkingDirectory(
   });
 
   core.debug("Copying implementation files");
-  await copyImplementationFiles(exercise, workdir);
+  await copyImplementationFiles(exercise, workdir, options);
 
   return workdir;
 }

@@ -4,23 +4,31 @@ import { resolve } from "node:path";
 import { Chalk } from "chalk";
 import * as duration from "humanize-duration";
 
-import { prepareTestRunner, runTestRunner, TestResults } from "./test-runner";
+import {
+  prepareTestRunner,
+  runTestRunner,
+  TestResults,
+  TestRunnerOptions,
+} from "./test-runner";
+
 import {
   readTrackConfig,
   readExerciseMetadata,
   Exercise,
   ExerciseConfig,
 } from "./config";
-import { prepareWorkingDirectory } from "./workdir";
+
+import { prepareWorkingDirectory, WorkDirOptions } from "./workdir";
 
 const chalk = new Chalk({ level: 3 });
 
 export interface Options {
-  image: string;
   concept: boolean;
   practice: boolean;
   includeWip: boolean;
   includeDeprecated: boolean;
+  testRunnerOptions: TestRunnerOptions;
+  workDirOptions: WorkDirOptions;
 }
 
 function formatDuration(ms: number): string {
@@ -81,8 +89,15 @@ async function testExercise(
   }
 
   core.info(`Testing exercise: ${exercise.name}`);
-  const workdir = await prepareWorkingDirectory(exercise);
-  const result = await runTestRunner(exercise.slug, workdir, options.image);
+  const workdir = await prepareWorkingDirectory(
+    exercise,
+    options.workDirOptions,
+  );
+  const result = await runTestRunner(
+    exercise.slug,
+    workdir,
+    options.testRunnerOptions,
+  );
   printResult(exercise, result);
 
   return { ...result, exercise };
@@ -162,7 +177,7 @@ function createSummaryTable(results: ExerciseTestResult[]): SummaryTableRow[] {
 
 export async function main(options: Options) {
   try {
-    await prepareTestRunner(options.image);
+    await prepareTestRunner(options.testRunnerOptions);
     const config = await readTrackConfig(process.cwd());
 
     const conceptExercises = await getExercises(

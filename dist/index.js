@@ -29826,12 +29826,12 @@ var test_runner_awaiter = (undefined && undefined.__awaiter) || function (thisAr
 
 
 
-function prepareTestRunner(image) {
+function prepareTestRunner({ image }) {
     return test_runner_awaiter(this, void 0, void 0, function* () {
         return (0,exec.exec)("docker", ["pull", image]);
     });
 }
-function runTestRunner(slug, workdir, image) {
+function runTestRunner(slug, workdir, { image }) {
     return test_runner_awaiter(this, void 0, void 0, function* () {
         core.debug("Starting test runner");
         const start = external_node_process_namespaceObject.hrtime.bigint();
@@ -29905,7 +29905,7 @@ function copy(fromPath, toPath) {
         return (0,promises_namespaceObject.cp)(fromPath, toPath);
     });
 }
-function copyImplementationFiles(exercise, workdir) {
+function copyImplementationFiles(exercise, workdir, { renameExampleFiles }) {
     var _a, _b;
     return workdir_awaiter(this, void 0, void 0, function* () {
         let solutionFiles = exercise.metadata.files.solution;
@@ -29918,6 +29918,9 @@ function copyImplementationFiles(exercise, workdir) {
             ...((_a = exercise.metadata.files.example) !== null && _a !== void 0 ? _a : []),
             ...((_b = exercise.metadata.files.exemplar) !== null && _b !== void 0 ? _b : []),
         ];
+        if (!renameExampleFiles) {
+            return Promise.all(exampleFiles.map((file) => copy((0,external_node_path_namespaceObject.join)(exercise.path, file), (0,external_node_path_namespaceObject.join)(workdir, relativeSolutionDir, (0,external_node_path_namespaceObject.basename)(file)))));
+        }
         while (solutionFiles.length > 0 || exampleFiles.length > 0) {
             const exampleFile = exampleFiles.shift();
             const solutionFile = solutionFiles.shift();
@@ -29936,7 +29939,7 @@ function copyImplementationFiles(exercise, workdir) {
         }
     });
 }
-function prepareWorkingDirectory(exercise) {
+function prepareWorkingDirectory(exercise, options) {
     return workdir_awaiter(this, void 0, void 0, function* () {
         core.debug("Creating temporary working directory");
         const workdir = yield (0,promises_namespaceObject.mkdtemp)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), exercise.slug));
@@ -29964,7 +29967,7 @@ function prepareWorkingDirectory(exercise) {
             },
         });
         core.debug("Copying implementation files");
-        yield copyImplementationFiles(exercise, workdir);
+        yield copyImplementationFiles(exercise, workdir, options);
         return workdir;
     });
 }
@@ -30029,8 +30032,8 @@ function testExercise(exercise, options) {
             return { status: "skipped", skipReason: "deprecated", exercise };
         }
         core.info(`Testing exercise: ${exercise.name}`);
-        const workdir = yield prepareWorkingDirectory(exercise);
-        const result = yield runTestRunner(exercise.slug, workdir, options.image);
+        const workdir = yield prepareWorkingDirectory(exercise, options.workDirOptions);
+        const result = yield runTestRunner(exercise.slug, workdir, options.testRunnerOptions);
         printResult(exercise, result);
         return Object.assign(Object.assign({}, result), { exercise });
     });
@@ -30096,7 +30099,7 @@ function createSummaryTable(results) {
 function main(options) {
     return main_awaiter(this, void 0, void 0, function* () {
         try {
-            yield prepareTestRunner(options.image);
+            yield prepareTestRunner(options.testRunnerOptions);
             const config = yield readTrackConfig(process.cwd());
             const conceptExercises = yield getExercises(config.exercises.concept, "exercises/concept");
             if (options.concept && conceptExercises.length > 0) {
@@ -30142,13 +30145,20 @@ function main(options) {
 
 
 main({
-    image: (0,core.getInput)("test-runner-image", { required: true }),
     concept: (0,core.getBooleanInput)("test-concept-exercises", { required: true }),
     practice: (0,core.getBooleanInput)("test-practice-exercises", { required: true }),
     includeWip: (0,core.getBooleanInput)("include-wip-exercises", { required: true }),
     includeDeprecated: (0,core.getBooleanInput)("include-deprecated-exercises", {
         required: true,
     }),
+    testRunnerOptions: {
+        image: (0,core.getInput)("test-runner-image", { required: true }),
+    },
+    workDirOptions: {
+        renameExampleFiles: (0,core.getBooleanInput)("rename-example-files", {
+            required: true,
+        }),
+    },
 });
 
 })();

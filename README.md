@@ -24,6 +24,10 @@ This action tests an Exercism track repository using that track's test runner.
 
 **Required** Whether to test exercises marked as deprecated. Defaults to `false`.
 
+### `rename-example-files`
+
+**Required** Set to false to copy the example files as-is to the solution directory. Defaults to `true`.
+
 ## Outputs
 
 None.

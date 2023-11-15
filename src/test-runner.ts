@@ -73,14 +73,18 @@ export type TestResults = TestRunnerOutput & {
   duration: number;
 };
 
-export async function prepareTestRunner(image: string) {
+export interface TestRunnerOptions {
+  image: string;
+}
+
+export async function prepareTestRunner({ image }: TestRunnerOptions) {
   return exec("docker", ["pull", image]);
 }
 
 export async function runTestRunner(
   slug: string,
   workdir: string,
-  image: string,
+  { image }: TestRunnerOptions,
 ): Promise<TestResults> {
   core.debug("Starting test runner");
   const start = hrtime.bigint();

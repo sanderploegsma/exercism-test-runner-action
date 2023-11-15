@@ -20,6 +20,10 @@ inputs:
     description: Whether to test exercises marked as deprecated.
     required: true
     default: "false"
+  rename-example-files:
+    description: Set to false to copy the example files as-is to the solution directory.
+    required: true
+    default: "true"
 runs:
   using: node20
   main: dist/index.js
