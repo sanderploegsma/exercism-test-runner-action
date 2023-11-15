@@ -117,15 +117,6 @@ async function testExercises(
   return results;
 }
 
-async function testExercisesParallel(
-  exercises: Exercise[],
-  options: Options,
-): Promise<ExerciseTestResult[]> {
-  return Promise.all(
-    exercises.map((exercise) => testExercise(exercise, options)),
-  );
-}
-
 async function getExercises(
   exercises: ExerciseConfig[],
   directory: string,
@@ -195,7 +186,7 @@ export async function main(options: Options) {
     );
 
     if (options.concept && conceptExercises.length > 0) {
-      const results = await testExercisesParallel(conceptExercises, options);
+      const results = await testExercises(conceptExercises, options);
       core.summary
         .addHeading("Concept exercise test results", 2)
         .addTable(createSummaryTable(results));
@@ -214,7 +205,7 @@ export async function main(options: Options) {
     );
 
     if (options.practice && practiceExercises.length > 0) {
-      const results = await testExercisesParallel(practiceExercises, options);
+      const results = await testExercises(practiceExercises, options);
       core.summary
         .addHeading("Practice exercise test results", 2)
         .addTable(createSummaryTable(results));
